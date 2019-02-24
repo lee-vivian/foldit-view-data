@@ -2,20 +2,8 @@
 
 # import scikit, pandas, and/or oranges
 
-if __name__ == "__main__":
-	import argparse
-	prog_desc = "Foldit view options analysis."
-	parser = argparse.ArgumentParser(description=prog_desc)
-	#parser.add_argument('path', help="Relative path to replay directory")
-	args = parser.parse_args()
-	
-	import sqlite3
-	# Tables: options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
-	conn = sqlite3.connect('folditx.db')
-	c = conn.cursor()
-	
+def io_mode(args):
 	command = ''
-	
 	while (command != 'q'):
 		command = command.lower()
 		
@@ -23,8 +11,9 @@ if __name__ == "__main__":
 			
 			print "h - help"
 			print "q - quit"
-			print "t - list tables"
+			print "t - list tables" # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
 			print "c [table] - list columns in table"
+			print "e [command] - execute command"
 		
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
@@ -39,20 +28,34 @@ if __name__ == "__main__":
 					print info[0]
 			except:
 				print("Invalid table name")
+				
+		if command.startswith("e "):
+			com = command[2:]
+			c.execute(com) # TODO test, I don't know if string formatting is okay
+			print(c.fetchall())
 		
 		print "Enter command (h for help): "
 		command = raw_input()
-		
 	print("Goodbye")
+
+if __name__ == "__main__":
+	import argparse
+	prog_desc = "Foldit view options analysis."
+	parser = argparse.ArgumentParser(description=prog_desc)
+	parser.add_argument('-execute', default="", help="Query to input.")
+	args = parser.parse_args()
 	
+	import sqlite3
+	conn = sqlite3.connect('folditx.db')
+	c = conn.cursor()
 	
-	
-	# c.execute('''SELECT * from rpnode__puzzle;''')
-	# print c.fetchone()
-	# c.execute('''SELECT * from sqlite_sequence;''')
-	# print c.fetchone()
-	# c.execute('''SELECT * from rprp_puzzle_ranks;''')
-	# print c.fetchone()
+	# if we specify a command from terminal, retrieve and quit
+	# otherwise enter I/O mode of entering commands
+	if args.execute != "":
+		c.execute(args.execute) # TODO test, I don't know if string formatting is okay
+		print(c.fetchall())
+	else:
+		io_mode(args)
 
 
 
