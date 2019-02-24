@@ -1,0 +1,22 @@
+RQs
+How do players look at Foldit puzzles?
+What information is valuable to players to solve a puzzle?
+
+QUERIES
+For puzzles of a given type:
+- do high scores share views?
+- do experts share views?
+
+Do groups share views?
+
+Descriptive stats on view options
+
+What view options are correlated with each other?
+
+Do players use the same view for different puzzle types?
+
+Are players consistent in how they set views for puzzle types?
+
+Can you predict expertise based on view options? What carries predictive value?
+
+Do players change their views a lot? Do experts change their views? Do they change their views on particular puzzle types?
