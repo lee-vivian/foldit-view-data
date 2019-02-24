@@ -20,3 +20,159 @@ Are players consistent in how they set views for puzzle types?
 Can you predict expertise based on view options? What carries predictive value?
 
 Do players change their views a lot? Do experts change their views? Do they change their views on particular puzzle types?
+
+------ OTHER QUESTIONS
+
+So a few interesting things to do, I think:
+- filter out those options that are for introductory puzzles (I think these would be ones that don't have an entry in the puzzle table) and possibly also beginner puzzles (whose names start with beginner)
+- cluster players some of the other view options (ie, clashes/voids/hydrophobics, dark background, advanced mode, maybe others)
+
+Top players: players who ranked in the top N soloists or evolvers in at least 3 puzzles
+- use the ranks data to determine which are the "top" players and see what kinds of options they use
+
+
+Questions:
+1. What options do people actually use?
+compare option settings to defaults; but note some options are changed by intro puzzles so we’d need to account for that
+
+2. Are there consistent groupings of options players use together?
+cluster options
+
+3. What options do top players use? Do they change options often? Can we predict how well a player will do based on their options settings?
+regression
+
+
+4. Do players in the same group use options to look the protein in similar or different ways? Are players in a group specializing?
+
+
+
+
+
+---- COLUMN INFO ----
+
+SQLITE_SEQUENCE
+name
+seq
+
+RPRP_PUZZLE_RANKS
+type - 1=soloist, 2=evolver
+pid
+uid
+best_score
+cur_score
+changed
+gid - group id
+is_valid
+
+RPNODE__PUZZLE
+nid - puzzle id
+vid
+type
+title
+uid
+status
+changed
+comment
+promote
+moderate
+sticky
+language
+tnid
+translate
+
+OPTIONS
+uid - user id
+pid - puzzle id
+time - unix timestamp
+error - flag for processing error
+advanced_mode
+autoshow_chat__global
+autoshow_chat__group
+autoshow_chat__puzzle
+autoshow_chat__veteran
+autoshow_notifications
+chat__auto_reconnect
+chat__disable_non_group
+chat_enable_public_profainty_filter
+cleanup_temp_files
+electron_density_panel__alpha
+electron_density_panel__backface_culling
+electron_density_panel__color
+electron_density_panel__threshold
+electron_density_panel__visualization
+graph_options__graph_length_value
+graph_options__graph_memory_value
+gui__desired_fps
+gui__desired_window_height
+gui__desired_window_width
+gui__file_dir
+gui__image_dir
+login_dialog__disable_timeouts
+login_dialog__player
+login_dialog__proxy
+login_dialog__use_proxy
+macro__examples_loaded
+macro__gui__flyout_font_size
+macro__hint__block_aciton_quick_save
+macro__hint__block_action_band
+macro__hint__block_action_behavior
+macro__hint__block_action_disable
+macro__hint__block_action_enable
+macro__hint__block_action_localwiggle
+macro__hint__block_action_lock
+macro__hint__block_action_mutate_all
+macro__hint__block_action_quick_load
+macro__hint__block_action_remove
+macro__hint__block_action_reset_puzzle
+macro__hint__block_action_reset_recent_best
+macro__hint__block_action_residues_by_stride
+macro__hint__block_action_restore_absolute_best
+macro__hint__block_action_restore_recent_best
+macro__hint__block_action_set_amino_acid
+macro__hint__block_action_set_secondary_structure
+macro__hint__block_action_set_strength
+macro__hint__block_action_shake
+macro__hint__block_action_unlock
+macro__hint__block_action_wiggle
+macro__hint__block_add
+macro__hint__cookbook_list
+macro__hint__open_cookbook
+macro__hint__red_dashed_box
+music
+puzzle_dialog__show_beginner
+puzzle_dialog__show_old
+rank_popups
+reduce_bandwidth
+render__option__shader_outline
+selection_mode
+selection_mode__show_notes
+sound
+switch_middle_right_click
+switch_residue_colors - colorblind mode
+tooltips
+update_group
+view_options__current_visor
+view_options__dark_background
+view_options__gui_fade
+view_options__guide_pulse
+view_options__relative_score_coloring
+view_options__render_style
+view_options__show_backbone_issues
+view_options__show_bondable_atoms
+view_options__show_buried_polars
+view_options__show_clashes
+view_options__show_contact_map_geoms
+view_options__show_hbonds
+view_options__show_helix_hbonds
+view_options__show_issues
+view_options__show_non_protein_hbonds
+view_options__show_other_hbonds
+view_options__show_outlines
+view_options__show_residue_burial
+view_options__show_sidechain_hbonds
+view_options__show_sidechains_with_issues
+view_options__show_voids
+view_options__sidechain_mode
+view_options__sym_chain_colors
+view_options__sym_chain_visible
+view_options__working_pulse_style
