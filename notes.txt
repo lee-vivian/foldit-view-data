@@ -13,7 +13,7 @@ TODO
 3. Descriptive statistics for the Views:
 -- 3a. Overall
 -- 3b. Clustered by puzzle type
--- 3c. Clustered by expert / non-expert
+-- 3c. Clustered by expert / non-expert (see definition of expert in #4)
 4. View Sharing. Define similarity as Euclidian distance between Views, calculated per element so we can consider the similarity between two Views as a vector of distances. The within-cluster similarity is the average of similarities between a View and every other View in the cluster (O(n^2) time). For each cluster, for each dimension, can report mean, SD, kurtosis, skew, and a graph. Can report summary data as the sum of distances.
 -- 4a. Define a high scoring View as one which is in the top 5% of Views for a particular puzzle. Define an expert as a player with at least X high scoring Views, where X is the smallest number that results in experts being fewer than 5% of the players (probably 1-3 Views).
 -- 4b. On average, how similar is each player to themselves? What if puzzle type is accounted for?
