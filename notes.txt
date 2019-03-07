@@ -13,7 +13,8 @@ Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (
 
 
 TODO
-1. Convert data into something Orange can read in.
+1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
+-- 1b. Clean db; for example many ints are written as u'0'
 2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange.
 3. Descriptive statistics for the Views:
 -- 3a. Overall
@@ -66,14 +67,14 @@ tnid
 translate
 
 OPTIONS
-uid - user id
-pid - puzzle id
-time - unix timestamp
-error - flag for processing error
-advanced_mode
-autoshow_chat__global
-autoshow_chat__group
-autoshow_chat__puzzle
+uid - user id - ulong
+pid - puzzle id - int
+time - unix timestamp - int
+error - flag for processing error - int
+advanced_mode - uint
+autoshow_chat__global  - uint
+autoshow_chat__group  - uint
+autoshow_chat__puzzle  - uint
 autoshow_chat__veteran
 autoshow_notifications
 chat__auto_reconnect

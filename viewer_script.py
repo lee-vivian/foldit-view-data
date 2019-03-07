@@ -25,6 +25,19 @@ VIEW (conceptual struct):
 	OPTIONS
 	(basically everything except maybe timestamp and error flag)
 
+
+	
+QUERY EXAMPLES
+
+Count values of an option:
+    select advanced_mode, count(advanced_mode) from options group by advanced_mode
+	
+	
+USEFUL CODE TIDBITS
+
+Convert unicode back into normal string:
+	my_unicode_string.encode('ascii','ignore')
+
 """
 
 def io_mode(args):
@@ -33,7 +46,7 @@ def io_mode(args):
 	if command != '':
 		single_query = True
 		command = "e " + command
-	while (command != 'q'):
+	while (command != 'q' and command != 'exit'):
 		command = command.lower()
 		
 		if command == 'h':
@@ -42,6 +55,7 @@ def io_mode(args):
 			print "q - quit"
 			print "t - list tables" # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
 			print "c [table] - list columns in table"
+			print "freq [option] - count values of an option"
 			print "e [command] - execute command"
 		
 		if command == 't':
@@ -57,6 +71,15 @@ def io_mode(args):
 					print info[0]
 			except:
 				print("Invalid table name")
+				
+		if command.startswith("freq "):
+			option = command[5:]
+			try:
+				c.execute('''select %s, count(%s) from options group by %s;''' % (option,option,option))
+				print(c.fetchall())
+			except Exception as e:
+				print("Invalid option")
+				print(e) # TEST
 				
 		if command.startswith("e "):
 			com = command[2:]
