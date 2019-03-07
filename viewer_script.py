@@ -1,4 +1,7 @@
 #! /usr/bin/python
+from __future__ import division
+import math, operator
+from collections import defaultdict
 
 # import scikit, pandas, and/or oranges
 
@@ -40,8 +43,80 @@ Convert unicode back into normal string:
 
 """
 
-OPTIONS_LIST = [
-advanced_mode
+FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
+
+BINARY_OPTIONS = [
+	"advanced_mode",
+	"electron_density_panel__backface_culling", 
+	"macro__hint__block_aciton_quick_save", 
+	"macro__hint__block_action_band", 
+	"macro__hint__block_action_behavior", 
+	"macro__hint__block_action_disable", 
+	"macro__hint__block_action_enable", 
+	"macro__hint__block_action_localwiggle", 
+	"macro__hint__block_action_lock", 
+	"macro__hint__block_action_mutate_all", 
+	"macro__hint__block_action_quick_load", 
+	"macro__hint__block_action_remove", 
+	"macro__hint__block_action_reset_puzzle", 
+	"macro__hint__block_action_reset_recent_best", 
+	"macro__hint__block_action_residues_by_stride", 
+	"macro__hint__block_action_restore_absolute_best", 
+	"macro__hint__block_action_restore_recent_best", 
+	"macro__hint__block_action_set_amino_acid", 
+	"macro__hint__block_action_set_secondary_structure", 
+	"macro__hint__block_action_set_strength", 
+	"macro__hint__block_action_shake", 
+	"macro__hint__block_action_unlock", 
+	"macro__hint__block_action_wiggle", 
+	"macro__hint__block_add", 
+	"macro__hint__cookbook_list", 
+	"macro__hint__red_dashed_box", 
+	"music", 
+	"puzzle_dialog__show_beginner", 
+	"puzzle_dialog__show_old", 
+	"rank_popups", 
+	"reduce_bandwidth", 
+	"render__option__shader_outline", 
+	"selection_mode", 
+	"selection_mode__show_notes", 
+	"sound", 
+	"switch_middle_right_click", 
+	"switch_residue_colors", 
+	"tooltips", 
+	"view_options__dark_background", 
+	"view_options__gui_fade", 
+	"view_options__guide_pulse", 
+	"view_options__relative_score_coloring", 
+	"view_options__show_backbone_issues", 
+	"view_options__show_bondable_atoms", 
+	"view_options__show_buried_polars", 
+	"view_options__show_clashes", 
+	"view_options__show_contact_map_geoms", 
+	"view_options__show_hbonds", 
+	"view_options__show_helix_hbonds", 
+	"view_options__show_issues", 
+	"view_options__show_non_protein_hbonds", 
+	"view_options__show_other_hbonds", 
+	"view_options__show_outlines", 
+	"view_options__show_residue_burial", 
+	"view_options__show_sidechain_hbonds", 
+	"view_options__show_sidechains_with_issues", 
+	"view_options__show_voids", 
+	"view_options__sym_chain_colors", 
+	"view_options__sym_chain_visible", 
+	"view_options__working_pulse_style", 
+]
+
+CAT_OPTIONS = [
+	"update_group", 
+	"view_options__current_visor", 
+	"view_options__render_style", 
+	"view_options__sidechain_mode", 
+]
+
+FULL_OPTIONS_LIST = [
+	"advanced_mode",
 	"autoshow_chat__global",
 	"autoshow_chat__group",
 	"autoshow_chat__puzzle",
@@ -100,7 +175,7 @@ advanced_mode
 	"selection_mode__show_notes", 
 	"sound", 
 	"switch_middle_right_click", 
-	"switch_residue_colors - colorblind mode", 
+	"switch_residue_colors", 
 	"tooltips", 
 	"update_group", 
 	"view_options__current_visor", 
@@ -130,16 +205,49 @@ advanced_mode
 	"view_options__working_pulse_style", 
 ]
 
+# returns the entropy for a binary var
+def entropy(count_0, count_1):
+	p = count_1 / (count_0 + count_1)
+	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
+
+def get_all_entropies():
+	ent_dict = defaultdict(float)
+	for o in BINARY_OPTIONS:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			results = c.fetchall()
+			# note that it returns (None,0) as result 0, I don't know why
+			count_0 = results[1][1]
+			count_1 = results[2][1]
+			ent_dict[o] = entropy(count_0, count_1)
+		except Exception as e:
+			print("Invalid option: " + str(o))
+	sorted_dict = sorted(ent_dict.items(), key=operator.itemgetter(1), reverse=True)
+	for option, en in sorted_dict:
+		print(option + ": " + str(en))
+	
+def freq_all():
+	for o in FULL_OPTIONS_LIST:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			print(o.upper())
+			print(c.fetchall())
+		except Exception as e:
+			print("Invalid option: " + str(o))
+		
+
 def clean_db():
-	for o in OPTIONS_LIST:
+	pass
+	#for o in FULL_OPTIONS_LIST:
 		# c.execute( # TODO, remove unicode
 
 def io_mode(args):
-	command = args.execute
-	single_query = False
-	if command != '':
-		single_query = True
-		command = "e " + command
+	single_query = args.execute != '' or args.quick != ''
+	command = ''
+	if args.execute:
+		command = "e " + args.execute
+	if args.quick:
+		command = args.quick
 	while (command != 'q' and command != 'exit'):
 		command = command.lower()
 		
@@ -151,6 +259,7 @@ def io_mode(args):
 			print "c [table] - list columns in table"
 			print "freq [option] - count values of an option"
 			print "e [command] - execute command"
+			print "ent [option] - get entropy of option"
 		
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
@@ -164,16 +273,31 @@ def io_mode(args):
 				for info in c.description:
 					print info[0]
 			except:
-				print("Invalid table name")
-				
-		if command.startswith("freq "):
+				print("Invalid table name: " + str(table))
+			
+		if command == "freq all":
+			freq_all()
+		elif command.startswith("freq "):
 			option = command[5:]
 			try:
-				c.execute('''select %s, count(%s) from options group by %s;''' % (option,option,option))
+				c.execute(FREQ_COUNT_QUERY % (option,option,option))
 				print(c.fetchall())
 			except Exception as e:
-				print("Invalid option")
-				print(e) # TEST
+				print("Invalid option: " + str(option))
+				
+		if command == "ent all":
+			get_all_entropies()
+		elif command.startswith("ent "):
+			option = command[4:]
+			try:
+				c.execute(FREQ_COUNT_QUERY % (option,option,option))
+				results = c.fetchall()
+				# note that it returns (None,0) as result 0, I don't know why
+				count_0 = results[1][1]
+				count_1 = results[2][1]
+				print(entropy(count_0, count_1))
+			except Exception as e:
+				print("Invalid option: " + str(option))
 				
 		if command.startswith("e "):
 			com = command[2:]
@@ -196,6 +320,7 @@ if __name__ == "__main__":
 	import argparse
 	prog_desc = "Foldit view options analysis."
 	parser = argparse.ArgumentParser(description=prog_desc)
+	parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
 	parser.add_argument('--execute', default="", help="Query to input.")
 	args = parser.parse_args()
 	

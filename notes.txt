@@ -15,7 +15,7 @@ Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (
 TODO
 1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
 -- 1b. Clean db; for example many ints are written as u'0'
-2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange.
+2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange. -- When I tried to cluster with Orange, it ran out of memory
 3. Descriptive statistics for the Views:
 -- 3a. Overall
 -- 3b. Clustered by puzzle type
@@ -71,20 +71,20 @@ uid - user id - ulong
 pid - puzzle id - int
 time - unix timestamp - int
 error - flag for processing error - int
-advanced_mode - uint
-autoshow_chat__global  - uint
-autoshow_chat__group  - uint
-autoshow_chat__puzzle  - uint
+advanced_mode 
+autoshow_chat__global 
+autoshow_chat__group 
+autoshow_chat__puzzle 
 autoshow_chat__veteran
 autoshow_notifications
 chat__auto_reconnect
 chat__disable_non_group
 chat_enable_public_profainty_filter
 cleanup_temp_files
-electron_density_panel__alpha
+electron_density_panel__alpha - float 0:1
 electron_density_panel__backface_culling
-electron_density_panel__color
-electron_density_panel__threshold
+electron_density_panel__color - RGB
+electron_density_panel__threshold - 
 electron_density_panel__visualization
 graph_options__graph_length_value
 graph_options__graph_memory_value
