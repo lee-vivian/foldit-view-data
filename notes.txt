@@ -3,13 +3,18 @@ How do players look at Foldit puzzles?
 What information is valuable to players to solve a puzzle?
 
 FILTERS
-- only valid data (no error flag)
+- OPTIONS error = 0
+- RPRP_PUZZLE_RANKS is_valid = 1
 - no data from intro levels (i.e. don't have an entry in the puzzle table)
 - no data from beginner levels (names start with Beginner)
 
+VIEW
+Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
+
+
 TODO
-1. Convert data into Views. A View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
-2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize.
+1. Convert data into something Orange can read in.
+2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange.
 3. Descriptive statistics for the Views:
 -- 3a. Overall
 -- 3b. Clustered by puzzle type
@@ -36,8 +41,8 @@ seq
 
 RPRP_PUZZLE_RANKS
 type - 1=soloist, 2=evolver
-pid
-uid
+pid - puzzle id
+uid - user id
 best_score
 cur_score
 changed

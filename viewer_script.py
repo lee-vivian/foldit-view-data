@@ -2,8 +2,37 @@
 
 # import scikit, pandas, and/or oranges
 
+"""
+VIEW (conceptual struct):
+
+	Metadata
+	
+		RPRP_PUZZLE_RANKS
+			type - 1=soloist, 2=evolver
+			pid - puzzle
+			uid - user
+			best_score
+			cur_score
+			gid - group id
+
+		RPNODE__PUZZLE
+			nid - puzzle id
+			vid - ??
+			type
+		
+	View Data
+
+	OPTIONS
+	(basically everything except maybe timestamp and error flag)
+
+"""
+
 def io_mode(args):
-	command = ''
+	command = args.execute
+	single_query = False
+	if command != '':
+		single_query = True
+		command = "e " + command
 	while (command != 'q'):
 		command = command.lower()
 		
@@ -31,31 +60,32 @@ def io_mode(args):
 				
 		if command.startswith("e "):
 			com = command[2:]
-			c.execute(com) # TODO test, I don't know if string formatting is okay
-			print(c.fetchall())
-		
-		print "Enter command (h for help): "
-		command = raw_input()
-	print("Goodbye")
+			try:
+				c.execute(com)
+				print(c.fetchall())
+			except sqlite3.OperationalError as e:
+				print("ERR: unable to perform operation")
+				print("INFO: " + str(e))
+				
+		if not single_query:
+			print "Enter command (h for help): "
+			command = raw_input("> ")
+		else:
+			command = 'q'
+	if not single_query:
+		print("Goodbye")
 
 if __name__ == "__main__":
 	import argparse
 	prog_desc = "Foldit view options analysis."
 	parser = argparse.ArgumentParser(description=prog_desc)
-	parser.add_argument('-execute', default="", help="Query to input.")
+	parser.add_argument('--execute', default="", help="Query to input.")
 	args = parser.parse_args()
 	
 	import sqlite3
 	conn = sqlite3.connect('folditx.db')
 	c = conn.cursor()
-	
-	# if we specify a command from terminal, retrieve and quit
-	# otherwise enter I/O mode of entering commands
-	if args.execute != "":
-		c.execute(args.execute) # TODO test, I don't know if string formatting is okay
-		print(c.fetchall())
-	else:
-		io_mode(args)
+	io_mode(args)
 
 
 
