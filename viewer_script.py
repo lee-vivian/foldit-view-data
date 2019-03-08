@@ -14,7 +14,7 @@ VIEW (conceptual struct):
 			type - 1=soloist, 2=evolver
 			pid - puzzle
 			uid - user
-			best_score
+			best_score - note: scores are in rosetta energy, so lower is better
 			cur_score
 			gid - group id
 
@@ -43,6 +43,7 @@ Convert unicode back into normal string:
 
 """
 
+MIN_HIGHSCORES_PER_EXPERT = 3
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 
 BINARY_OPTIONS = [
@@ -155,26 +156,29 @@ FULL_OPTIONS_LIST = [
 ]
 
 # Returns true iff score is <= 5% of best scores for this puzzle
-def is_highscore(score, pid):
-	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks group by uid where pid=%d order by best_score desc;''' % pid)
+def is_highscore(pid, score):
+	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
 	# count entries, get the entry that's exactly 95th percentile, check our score vs that
 	results = c.fetchall()
-	print("entry: ")	# TEST
-	print(results[1])	# TEST
 	num_scores = len(results)
-	print("num: " + str(num_scores)) # TEST
-	print("ind: " + str(index)) # TEST
-	index = math.ceil(num_scores*0.05)
+	index = int(math.ceil(num_scores*0.05))
 	min_score = results[index][1]
-	print("min: " + str(min_score)) # TEST
-	return score >= min_score
+	return score <= min_score
 	
 # Returns true iff expert has achieved a high score in MIN_HIGHSCORES_PER_EXPERT distinct puzzles
 def is_expert(uid):
 	# get list of their best scores for each puzzle
 	# count is_highscore
-	c.execute('''select distinct pid, max(best_score) from rprp_puzzle_ranks where uid=%d order by best_score desc;''' % uid)
-
+	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" order by best_score asc;''' % uid)
+	results = c.fetchall()
+	num_highscores = 0
+	for result in results:
+		if is_highscore(result[0], result[1]):
+			num_highscores += 1
+	return num_highscores >= MIN_HIGHSCORES_PER_EXPERT
+	
+def get_all_experts():
+	
 	
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
@@ -212,7 +216,7 @@ def clean_db():
 	#for o in FULL_OPTIONS_LIST:
 		# c.execute( # TODO, remove unicode
 
-def io_mode(args):
+def io_mode(args):	
 	single_query = args.execute != '' or args.quick != ''
 	command = ''
 	if args.execute:
@@ -228,9 +232,10 @@ def io_mode(args):
 			print "q - quit"
 			print "t - list tables" # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
 			print "c [table] - list columns in table"
-			print "freq [option] - count values of an option"
 			print "e [command] - execute command"
-			print "ent [option] - get entropy of option"
+			print "freq [option] - count values of an option (or 'all')"
+			print "ent [option] - get entropy of option (or 'all')"
+			print "experts - count and list all experts"
 		
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
@@ -245,6 +250,9 @@ def io_mode(args):
 					print info[0]
 			except:
 				print("Invalid table name: " + str(table))
+				
+		if command == "experts":
+			get_all_experts()
 			
 		if command == "freq all":
 			freq_all()
@@ -272,6 +280,8 @@ def io_mode(args):
 				
 		if command.startswith("e "):
 			com = command[2:]
+			if not com.endswith(";"): # be nice to user, append ; if need be
+				com = com + ";"
 			try:
 				c.execute(com)
 				print(c.fetchall())
