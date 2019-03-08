@@ -15,7 +15,7 @@ Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (
 TODO
 1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
 -- 1b. Clean db; for example many ints are written as u'0'
--- 1c. Link puzzle titles to Foldit Categories (Overall, Prediction, etc.)
+-- 1c. [TODO - get new table from Jeff] Link puzzle titles to Foldit Categories (Overall, Prediction, etc.)
 2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange. -- When I tried to cluster with Orange, it ran out of memory
 3. Descriptive statistics for the Views:
 -- 3a. Overall
@@ -53,9 +53,9 @@ is_valid
 
 RPNODE__PUZZLE
 nid - puzzle id
-vid
+vid - version id
 type -- just "puzzle"
-title -- useful info for type
+title
 uid
 status
 changed

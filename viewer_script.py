@@ -20,8 +20,8 @@ VIEW (conceptual struct):
 
 		RPNODE__PUZZLE
 			nid - puzzle id
-			vid - ??
-			title - where our type info comes from			
+			vid - version id
+			title		
 		
 	View Data
 
@@ -154,6 +154,28 @@ FULL_OPTIONS_LIST = [
 	"view_options__working_pulse_style", 
 ]
 
+# Returns true iff score is <= 5% of best scores for this puzzle
+def is_highscore(score, pid):
+	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks group by uid where pid=%d order by best_score desc;''' % pid)
+	# count entries, get the entry that's exactly 95th percentile, check our score vs that
+	results = c.fetchall()
+	print("entry: ")	# TEST
+	print(results[1])	# TEST
+	num_scores = len(results)
+	print("num: " + str(num_scores)) # TEST
+	print("ind: " + str(index)) # TEST
+	index = math.ceil(num_scores*0.05)
+	min_score = results[index][1]
+	print("min: " + str(min_score)) # TEST
+	return score >= min_score
+	
+# Returns true iff expert has achieved a high score in MIN_HIGHSCORES_PER_EXPERT distinct puzzles
+def is_expert(uid):
+	# get list of their best scores for each puzzle
+	# count is_highscore
+	c.execute('''select distinct pid, max(best_score) from rprp_puzzle_ranks where uid=%d order by best_score desc;''' % uid)
+
+	
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
 	p = count_1 / (count_0 + count_1)
@@ -165,7 +187,7 @@ def get_all_entropies():
 		try:
 			c.execute(FREQ_COUNT_QUERY % (o,o,o))
 			results = c.fetchall()
-			# note that it returns (None,0) as result 0, I don't know why
+			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
 			count_0 = results[1][1]
 			count_1 = results[2][1]
 			ent_dict[o] = entropy(count_0, count_1)
