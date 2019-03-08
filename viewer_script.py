@@ -1,6 +1,6 @@
 #! /usr/bin/python
 from __future__ import division
-import math, operator
+import math, operator, csv
 from collections import defaultdict
 
 # import scikit, pandas, and/or oranges
@@ -45,6 +45,7 @@ Convert unicode back into normal string:
 
 MIN_HIGHSCORES_PER_EXPERT = 3
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
+PIDS_BY_CAT = {}
 
 BINARY_OPTIONS = [
 	"advanced_mode",
@@ -178,7 +179,7 @@ def is_expert(uid):
 	return num_highscores >= MIN_HIGHSCORES_PER_EXPERT
 	
 def get_all_experts():
-	
+	pass # TODO
 	
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
@@ -215,8 +216,39 @@ def clean_db():
 	pass
 	#for o in FULL_OPTIONS_LIST:
 		# c.execute( # TODO, remove unicode
+		
+def import_categories():
+	global PIDS_BY_CAT
+	with open('puzzle_categories.csv', 'r') as cat_file:
+		reader = csv.reader(cat_file)
+		for row in reader:
+			pid = row[0]
+			for cat in row[1:]:
+				if cat == "NULL":
+					continue
+				if cat not in PIDS_BY_CAT.keys():
+					PIDS_BY_CAT[cat] = []
+				PIDS_BY_CAT[cat].append(pid)
+	print("Imported puzzle categories.")
+	for cat in PIDS_BY_CAT.keys():
+		num_puz = len(PIDS_BY_CAT[cat])
+		if args.debug:
+			print("    " + cat + ": " + str(num_puz) + " puzzles")
+		if num_puz < 10:
+			if args.debug:
+				print("    INFO: Dropping " + cat + " (too few puzzles)")
+			PIDS_BY_CAT.pop(cat, None)
+		
+		
+# place to run tests
+def test(args):
+	print("Beginning Tests...")
+	# Tests go here
+	
+	print("Done.")
 
 def io_mode(args):	
+	import_categories()
 	single_query = args.execute != '' or args.quick != ''
 	command = ''
 	if args.execute:
@@ -301,6 +333,8 @@ if __name__ == "__main__":
 	import argparse
 	prog_desc = "Foldit view options analysis."
 	parser = argparse.ArgumentParser(description=prog_desc)
+	parser.add_argument('-debug', action='store_true', help="Print debug info.")
+	parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
 	parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
 	parser.add_argument('--execute', default="", help="Query to input.")
 	args = parser.parse_args()
@@ -308,7 +342,10 @@ if __name__ == "__main__":
 	import sqlite3
 	conn = sqlite3.connect('folditx.db')
 	c = conn.cursor()
-	io_mode(args)
+	if args.test:
+		test(args)
+	else:
+		io_mode(args)
 
 
 
