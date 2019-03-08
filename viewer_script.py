@@ -21,7 +21,7 @@ VIEW (conceptual struct):
 		RPNODE__PUZZLE
 			nid - puzzle id
 			vid - ??
-			type
+			title - where our type info comes from			
 		
 	View Data
 
