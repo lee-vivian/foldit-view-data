@@ -1,6 +1,6 @@
 #! /usr/bin/python
-from __future__ import division
-import math, operator, csv
+from __future__ import division, print_function
+import math, operator, csv, sys
 from collections import defaultdict
 
 # import scikit, pandas, and/or oranges
@@ -43,7 +43,7 @@ Convert unicode back into normal string:
 
 """
 
-MIN_HIGHSCORES_PER_EXPERT = 3
+MIN_HIGHSCORES_PER_EXPERT = 5
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
 
@@ -162,24 +162,45 @@ def is_highscore(pid, score):
 	# count entries, get the entry that's exactly 95th percentile, check our score vs that
 	results = c.fetchall()
 	num_scores = len(results)
-	index = int(math.ceil(num_scores*0.05))
+	index = min(int(math.ceil(num_scores*0.05)), len(results)-1) # prevent index out of range error
 	min_score = results[index][1]
 	return score <= min_score
 	
-# Returns true iff expert has achieved a high score in MIN_HIGHSCORES_PER_EXPERT distinct puzzles
+# Returns number of high scores in puzzles
 def is_expert(uid):
 	# get list of their best scores for each puzzle
 	# count is_highscore
-	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" order by best_score asc;''' % uid)
+	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
 	results = c.fetchall()
 	num_highscores = 0
 	for result in results:
 		if is_highscore(result[0], result[1]):
 			num_highscores += 1
-	return num_highscores >= MIN_HIGHSCORES_PER_EXPERT
+	return num_highscores # TODO change to bool
 	
+# Warning: This function takes a long time to run.
+# When parameters for expertise are figured out, need to save to file and read in list of experts
 def get_all_experts():
-	pass # TODO
+	# get all users
+	c.execute('''select distinct uid from rprp_puzzle_ranks''')
+	users = c.fetchall()
+	print("Identifying experts:")
+	user_count = 0
+	expert_dict = {}
+	for user in users: 
+		user_count += 1
+		num_hs = is_expert(user)
+		if num_hs > 0:
+			expert_dict[user[0]] = num_hs
+			print('!',end='')
+		if user_count % 5 == 0:
+			print('.',end='')
+		sys.stdout.flush()
+	sorted_experts = sorted(expert_dict.items(), key=operator.itemgetter(1))
+	with open('experts.csv', 'w') as expert_file:
+		writer = csv.writer(expert_file)
+		writer.writerows(sorted_experts)
+
 	
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
@@ -244,7 +265,7 @@ def import_categories():
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
-	
+	get_all_experts()
 	print("Done.")
 
 def io_mode(args):	
@@ -260,26 +281,26 @@ def io_mode(args):
 		
 		if command == 'h':
 			
-			print "h - help"
-			print "q - quit"
-			print "t - list tables" # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
-			print "c [table] - list columns in table"
-			print "e [command] - execute command"
-			print "freq [option] - count values of an option (or 'all')"
-			print "ent [option] - get entropy of option (or 'all')"
-			print "experts - count and list all experts"
+			print("h - help")
+			print("q - quit")
+			print("t - list tables") # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
+			print("c [table] - list columns in table")
+			print("e [command] - execute command")
+			print("freq [option] - count values of an option (or 'all')")
+			print("ent [option] - get entropy of option (or 'all')")
+			print("experts - count and list all experts")
 		
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
 			for t in c.fetchall():
-				print t[0]
+				print(t[0])
 				
 		if command.startswith("c "):
 			table = command[2:]
 			try:
 				c.execute('''SELECT * from %s;''' % table)
 				for info in c.description:
-					print info[0]
+					print(info[0])
 			except:
 				print("Invalid table name: " + str(table))
 				
@@ -322,7 +343,7 @@ def io_mode(args):
 				print("INFO: " + str(e))
 				
 		if not single_query:
-			print "Enter command (h for help): "
+			print("Enter command (h for help): ")
 			command = raw_input("> ")
 		else:
 			command = 'q'
