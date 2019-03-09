@@ -6,7 +6,7 @@ FILTERS
 - OPTIONS error = 0
 - RPRP_PUZZLE_RANKS is_valid = 1
 - no data from intro levels (i.e. don't have an entry in the puzzle table)
-- no data from beginner levels (names start with Beginner)
+- no data from beginner levels (names start with Beginner) -> see also puzzle categories
 
 VIEW
 Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
@@ -15,7 +15,6 @@ Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (
 TODO
 1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
 -- 1b. Clean db; for example many ints are written as u'0'
--- 1c. [TODO - get new table from Jeff] Link puzzle titles to Foldit Categories (Overall, Prediction, etc.)
 2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange. -- When I tried to cluster with Orange, it ran out of memory
 3. Descriptive statistics for the Views:
 -- 3a. Overall

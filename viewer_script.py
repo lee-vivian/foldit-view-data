@@ -1,9 +1,10 @@
 #! /usr/bin/python
 from __future__ import division, print_function
-import math, operator, csv, sys
 from collections import defaultdict
 
-# import scikit, pandas, and/or oranges
+# Fix for Python 2.x
+try: input = raw_input
+except NameError: pass
 
 """
 VIEW (conceptual struct):
@@ -46,6 +47,7 @@ Convert unicode back into normal string:
 MIN_HIGHSCORES_PER_EXPERT = 5
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
+ENTROPY_DICT = {}
 
 BINARY_OPTIONS = [
 	"advanced_mode",
@@ -156,28 +158,32 @@ FULL_OPTIONS_LIST = [
 	"view_options__working_pulse_style", 
 ]
 
-# Returns true iff score is <= 5% of best scores for this puzzle
-def is_highscore(pid, score):
-	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
-	# count entries, get the entry that's exactly 95th percentile, check our score vs that
-	results = c.fetchall()
-	num_scores = len(results)
-	index = min(int(math.ceil(num_scores*0.05)), len(results)-1) # prevent index out of range error
-	min_score = results[index][1]
-	return score <= min_score
+# --------------- TEST BED -------------------------
+# place to run tests
+def test(args):
+	print("Beginning Tests...")
+	# Tests go here
 	
-# Returns number of high scores in puzzles
-def is_expert(uid):
-	# get list of their best scores for each puzzle
-	# count is_highscore
-	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
-	results = c.fetchall()
-	num_highscores = 0
-	for result in results:
-		if is_highscore(result[0], result[1]):
-			num_highscores += 1
-	return num_highscores # TODO change to bool
 	
+	#get_all_experts()
+	
+	print("Done.")
+
+# ------------ END TEST BED -----------------------
+
+
+
+# ------------ ONE TIME FUNCTIONS -----------------
+
+def freq_all():
+	for o in FULL_OPTIONS_LIST:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			print(o.upper())
+			print(c.fetchall())
+		except Exception as e:
+			print("Invalid option: " + str(o))
+
 # Warning: This function takes a long time to run.
 # When parameters for expertise are figured out, need to save to file and read in list of experts
 def get_all_experts():
@@ -200,15 +206,10 @@ def get_all_experts():
 	with open('experts.csv', 'w') as expert_file:
 		writer = csv.writer(expert_file)
 		writer.writerows(sorted_experts)
-
-	
-# returns the entropy for a binary var
-def entropy(count_0, count_1):
-	p = count_1 / (count_0 + count_1)
-	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
-
-def get_all_entropies():
-	ent_dict = defaultdict(float)
+		
+def get_all_entropies(output=False):
+	global ENTROPY_DICT
+	ENTROPY_DICT = defaultdict(float)
 	for o in BINARY_OPTIONS:
 		try:
 			c.execute(FREQ_COUNT_QUERY % (o,o,o))
@@ -216,23 +217,14 @@ def get_all_entropies():
 			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
 			count_0 = results[1][1]
 			count_1 = results[2][1]
-			ent_dict[o] = entropy(count_0, count_1)
+			ENTROPY_DICT[o] = entropy(count_0, count_1)
 		except Exception as e:
 			print("Invalid option: " + str(o))
-	sorted_dict = sorted(ent_dict.items(), key=operator.itemgetter(1), reverse=True)
-	for option, en in sorted_dict:
-		print(option + ": " + str(en))
-	
-def freq_all():
-	for o in FULL_OPTIONS_LIST:
-		try:
-			c.execute(FREQ_COUNT_QUERY % (o,o,o))
-			print(o.upper())
-			print(c.fetchall())
-		except Exception as e:
-			print("Invalid option: " + str(o))
-		
-
+	if output:
+		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
+		for option, en in sorted_dict:
+			print(option + ": " + str(en))	
+			
 def clean_db():
 	pass
 	#for o in FULL_OPTIONS_LIST:
@@ -251,6 +243,7 @@ def import_categories():
 					PIDS_BY_CAT[cat] = []
 				PIDS_BY_CAT[cat].append(pid)
 	print("Imported puzzle categories.")
+	drop_cats = []
 	for cat in PIDS_BY_CAT.keys():
 		num_puz = len(PIDS_BY_CAT[cat])
 		if args.debug:
@@ -258,18 +251,100 @@ def import_categories():
 		if num_puz < 10:
 			if args.debug:
 				print("    INFO: Dropping " + cat + " (too few puzzles)")
-			PIDS_BY_CAT.pop(cat, None)
+			drop_cats.append(cat)
+	for cat in drop_cats:
+		PIDS_BY_CAT.pop(cat, None)
 		
-		
-# place to run tests
-def test(args):
-	print("Beginning Tests...")
-	# Tests go here
-	get_all_experts()
-	print("Done.")
+# -------- END ONE TIME FUNCTIONS -----------------
+
+
+
+
+# -------- VIEW-BASED CALCULATIONS ----------------
+
+# Returns true iff score is <= 5% of best scores for this puzzle
+def is_highscore(pid, score):
+	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
+	# count entries, get the entry that's exactly 95th percentile, check our score vs that
+	results = c.fetchall()
+	num_scores = len(results)
+	index = min(int(math.ceil(num_scores*0.05)), len(results)-1) # prevent index out of range error
+	min_score = results[index][1]
+	return score <= min_score
+	
+# Returns number of high scores in puzzles
+def is_expert(uid):
+	# get list of their best scores for each puzzle
+	# count is_highscore
+	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
+	results = c.fetchall()
+	num_highscores = 0
+	for result in results:
+		if is_highscore(result[0], result[1]):
+			num_highscores += 1
+	return num_highscores # TODO change to bool
+	
+
+# calculates the similarity between two views - Euclidean distance
+# assumes views are a vector of interval variables
+def distance(view1, view2):
+	dist = [(a - b)**2 for a, b in zip(view1, view2)]
+	return math.sqrt(sum(dist)) # apparently this method is faster than external lib methods
+	
+
+# TODO
+# Input: a full vector of view data that can correspond somehow to known values of entropy for each attr
+# Output: the vector of data, elementwise multiplied by (1-entropy)
+def apply_inverse_entropy_weighting(view):
+	pass
+	
+# calculates the density of a cluster - i.e., the mean similarity between every view and every other view
+# returns mean and std
+# if dims option is set, calculates density only for specific dimension(s)
+# O(n^2) algorithm 
+def density(cluster, dims=[-1]):
+	distances = []
+	for i in len(cluster):
+		for j in len(cluster):
+			if i != j:
+				if dims == [-1]:
+					distances.append(distance(cluster[i], cluster[j]))
+				else:
+					d_i = []
+					d_j = []
+					for d in dims:
+						if d > len(cluster[0])-1 or d < 0:
+							raise IndexError("Tried to calculate density of a cluster on an invalid dimension")
+						else:
+							d_i.append(cluster[i][d])
+							d_j.append(cluster[j][d])
+					distances.append(distance(d_i, d_j))
+
+	mean = numpy.mean(distances)
+	std = numpy.std(distances)
+	return mean,std
+	
+# TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
+# returns the centroid of a cluster
+# if dims option is set, calculates for only specific dimension(s)
+def centroid(clus, dims=[-1]):
+	cluster = numpy.delete(clus, dims, axis=1)
+	return numpy.mean(cluster)
+
+	
+# returns the entropy for a binary var
+def entropy(count_0, count_1):
+	p = count_1 / (count_0 + count_1)
+	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
+
+# -------- END VIEW-BASED CALCULATIONS -------------
+	
+	
+	
+
+# ----------------- MAIN ---------------------------
 
 def io_mode(args):	
-	import_categories()
 	single_query = args.execute != '' or args.quick != ''
 	command = ''
 	if args.execute:
@@ -318,7 +393,7 @@ def io_mode(args):
 				print("Invalid option: " + str(option))
 				
 		if command == "ent all":
-			get_all_entropies()
+			get_all_entropies(output=True)
 		elif command.startswith("ent "):
 			option = command[4:]
 			try:
@@ -344,7 +419,7 @@ def io_mode(args):
 				
 		if not single_query:
 			print("Enter command (h for help): ")
-			command = raw_input("> ")
+			command = input("> ")
 		else:
 			command = 'q'
 	if not single_query:
@@ -360,13 +435,15 @@ if __name__ == "__main__":
 	parser.add_argument('--execute', default="", help="Query to input.")
 	args = parser.parse_args()
 	
-	import sqlite3
+	print("Loading modules and data...")
+	import math, operator, csv, sys, numpy, sqlite3
+	# import scikit, pandas, and/or oranges?
 	conn = sqlite3.connect('folditx.db')
 	c = conn.cursor()
+	import_categories()
+	print("...Loaded.")
+	
 	if args.test:
 		test(args)
 	else:
 		io_mode(args)
-
-
-
