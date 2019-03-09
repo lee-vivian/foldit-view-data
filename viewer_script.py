@@ -1,5 +1,6 @@
 #! /usr/bin/python
 from __future__ import division, print_function
+from future.utils import iteritems
 from collections import defaultdict
 
 # Fix for Python 2.x
@@ -89,11 +90,11 @@ BINARY_OPTIONS = [
 	"view_options__working_pulse_style", 
 ]
 
-CAT_OPTIONS = [
-	"view_options__current_visor", # AAColor, AbegoColor, CPK, EnzDes, Hydro, Hydro/Score, Hydro/Score+CPK, Hydrophobic, Ligand Specific, Rainbow, Score, Score/Hydro, Score/Hydro+CPK
-	"view_options__render_style", #Cartoon, Cartoon Ligand, Cartoon Thin, Line, Line+H, Line+polarH, Sphere, Stick, Stick+H, Stick+polarH, Trace Line, Trace Tube
-	"view_options__sidechain_mode", #Don't Show (Fast), Show All (Slow), Show Stubs
-]
+CAT_OPTIONS = {
+	"view_options__current_visor": ["AAColor", "AbegoColor", "CPK", "EnzDes", "Hydro", "Hydro/Score", "Hydro/Score+CPK", "Hydrophobic", "Ligand Specific", "Rainbow", "Score", "Score/Hydro", "Score/Hydro+CPK"],
+	"view_options__render_style": ["Cartoon", "Cartoon Ligand", "Cartoon Thin", "Line", "Line+H", "Line+polarH", "Sphere", "Stick", "Stick+H", "Stick+polarH", "Trace Line", "Trace Tube"],
+	"view_options__sidechain_mode": ["Don't Show (Fast)", "Show All (Slow)", "Show Stubs"]
+}
 
 FULL_OPTIONS_LIST = [
 	"advanced_mode",
@@ -164,7 +165,8 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 		
-	main_stats()
+	#main_stats()
+	query_to_views("limit 3")
 	
 	print("Done.")
 
@@ -182,6 +184,7 @@ def main_stats():
 	# Cluster by high score / not, report clustering statistics
 	
 	# Cluster by puzzle category, report clustering statistics
+	
 
 def freq_all():
 	for o in FULL_OPTIONS_LIST:
@@ -278,6 +281,49 @@ def import_experts(recalculate=False):
 
 
 # -------- VIEW-BASED CALCULATIONS ----------------
+
+# Input: string of where queries for options table (e.g. "where uid=... and pid=....")
+# For each result, create a view dict of bools representing each option, sorted by key
+# Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
+def query_to_views(where):
+	views = {} # dict of dicts, uniquely identified by uid, pid, and time
+	for bin_opt in BINARY_OPTIONS:
+		c.execute('''select uid, pid, time, %s from options %s''' % (bin_opt, where))
+		results = c.fetchall()
+		for result in results:
+			unique_id = str(result[0]) + str(result[1]) + str(result[2])
+			if unique_id not in views:
+				views[unique_id] = {}
+			view = views[unique_id]
+			view[bin_opt] = result[3]
+			views[unique_id] = view
+	for cat_opt in CAT_OPTIONS.keys():
+		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
+		results = c.fetchall()
+		for result in results:
+			unique_id = str(result[0]) + str(result[1]) + str(result[2])
+			if unique_id not in views:
+				views[unique_id] = {}
+			view = views[unique_id]
+			for opt in CAT_OPTIONS[cat_opt]:
+				if opt == result[3]:
+					view[opt] = 1
+				else:
+					view[opt] = 0
+			views[unique_id] = view		
+	return views
+			
+# Input: view dict from query_to_views
+# Output: list of just the values in a sorted order to keep things consistent
+def view_dict_to_list(view)
+	list = []
+	for bin_opt in BINARY_OPTIONS:
+		list.append(view[bin_opt])
+	for cat_opt in CAT_OPTIONS.keys():
+		for opt in CAT_OPTIONS[cat_opt]:
+			list.append(view[opt])
+	return list
+	
 
 # Returns true iff score is <= 5% of best scores for this puzzle
 def is_highscore(pid, score):
