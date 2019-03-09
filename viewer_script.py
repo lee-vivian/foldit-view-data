@@ -90,10 +90,9 @@ BINARY_OPTIONS = [
 ]
 
 CAT_OPTIONS = [
-	"update_group", 
-	"view_options__current_visor", 
-	"view_options__render_style", 
-	"view_options__sidechain_mode", 
+	"view_options__current_visor", # AAColor, AbegoColor, CPK, EnzDes, Hydro, Hydro/Score, Hydro/Score+CPK, Hydrophobic, Ligand Specific, Rainbow, Score, Score/Hydro, Score/Hydro+CPK
+	"view_options__render_style", #Cartoon, Cartoon Ligand, Cartoon Thin, Line, Line+H, Line+polarH, Sphere, Stick, Stick+H, Stick+polarH, Trace Line, Trace Tube
+	"view_options__sidechain_mode", #Don't Show (Fast), Show All (Slow), Show Stubs
 ]
 
 FULL_OPTIONS_LIST = [
@@ -131,7 +130,7 @@ FULL_OPTIONS_LIST = [
 	"switch_middle_right_click", 
 	"switch_residue_colors", 
 	"tooltips", 
-	"update_group", 
+	"update_group",  # several options, but probably split into =="main" true or false
 	"view_options__current_visor", 
 	"view_options__dark_background", 
 	"view_options__gui_fade", 
@@ -165,7 +164,7 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 		
-	
+	main_stats()
 	
 	print("Done.")
 
@@ -174,6 +173,15 @@ def test(args):
 
 
 # ------------ ONE TIME FUNCTIONS -----------------
+
+# Calculate and print full report of interesting stats
+def main_stats():
+	pass # TODO
+	# Cluster by expert/non, report clustering statistics
+	
+	# Cluster by high score / not, report clustering statistics
+	
+	# Cluster by puzzle category, report clustering statistics
 
 def freq_all():
 	for o in FULL_OPTIONS_LIST:
