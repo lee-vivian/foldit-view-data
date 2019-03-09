@@ -166,7 +166,18 @@ def test(args):
 	# Tests go here
 		
 	#main_stats()
-	query_to_views("limit 3")
+	
+	# Get total centroid
+	views = query_to_views("limit 3") # whole db
+	cluster = []
+	for (id,view) in iteritems(views):
+		cluster.append(view_dict_to_list(view))
+	print("cluster:")
+	print(cluster)
+	print("Density stats:")
+	print(density(cluster))
+	print("Centroid:")
+	print(list_to_view_dict(centroid(cluster)))
 	
 	print("Done.")
 
@@ -178,7 +189,10 @@ def test(args):
 
 # Calculate and print full report of interesting stats
 def main_stats():
-	pass # TODO
+	pass 
+	
+	# TODO apply filters
+	
 	# Cluster by expert/non, report clustering statistics
 	
 	# Cluster by high score / not, report clustering statistics
@@ -282,6 +296,7 @@ def import_experts(recalculate=False):
 
 # -------- VIEW-BASED CALCULATIONS ----------------
 
+# TODO how to deal with None data?
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....")
 # For each result, create a view dict of bools representing each option, sorted by key
 # Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
@@ -295,6 +310,8 @@ def query_to_views(where):
 			if unique_id not in views:
 				views[unique_id] = {}
 			view = views[unique_id]
+			if result[3] == "None" or result[3] is None: # TEST
+				print(bin_opt)
 			view[bin_opt] = result[3]
 			views[unique_id] = view
 	for cat_opt in CAT_OPTIONS.keys():
@@ -315,7 +332,7 @@ def query_to_views(where):
 			
 # Input: view dict from query_to_views
 # Output: list of just the values in a sorted order to keep things consistent
-def view_dict_to_list(view)
+def view_dict_to_list(view):
 	list = []
 	for bin_opt in BINARY_OPTIONS:
 		list.append(view[bin_opt])
@@ -323,6 +340,19 @@ def view_dict_to_list(view)
 		for opt in CAT_OPTIONS[cat_opt]:
 			list.append(view[opt])
 	return list
+	
+# TODO doesn't work if some of the dimensions were deleted during analysis
+# The reverse of view_dict_to_list
+# Input: list of just the view option values in a sorted order to keep things consistent
+# Output: view dict as "option name": option value
+def list_to_view_dict(list):
+	view = {}
+	for bin_opt in BINARY_OPTIONS:
+		view[bin_opt] = list.pop(0)
+	for cat_opt in CAT_OPTIONS.keys():
+		for opt in CAT_OPTIONS[cat_opt]:
+			view[opt] = list.pop(0)
+	return view
 	
 
 # Returns true iff score is <= 5% of best scores for this puzzle
@@ -391,7 +421,8 @@ def density(cluster, dims=[-1]):
 # returns the centroid of a cluster
 # if dims option is set, calculates for only specific dimension(s)
 def centroid(clus, dims=[-1]):
-	cluster = numpy.delete(clus, dims, axis=1)
+	if dims != [-1]:
+		cluster = numpy.delete(clus, dims, axis=1)
 	return numpy.mean(cluster)
 
 	
