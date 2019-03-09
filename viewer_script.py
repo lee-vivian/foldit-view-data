@@ -44,10 +44,11 @@ Convert unicode back into normal string:
 
 """
 
-MIN_HIGHSCORES_PER_EXPERT = 5
+MIN_HIGHSCORES_PER_EXPERT = 2
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
 ENTROPY_DICT = {}
+EXPERTS = []
 
 BINARY_OPTIONS = [
 	"advanced_mode",
@@ -163,9 +164,8 @@ FULL_OPTIONS_LIST = [
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
+		
 	
-	
-	#get_all_experts()
 	
 	print("Done.")
 
@@ -184,19 +184,18 @@ def freq_all():
 		except Exception as e:
 			print("Invalid option: " + str(o))
 
-# Warning: This function takes a long time to run.
-# When parameters for expertise are figured out, need to save to file and read in list of experts
+# Warning: This function takes 30+ minutes (haven't measured exactly, might be as much as 3 hours)
 def get_all_experts():
 	# get all users
 	c.execute('''select distinct uid from rprp_puzzle_ranks''')
 	users = c.fetchall()
-	print("Identifying experts:")
+	print("Identifying experts (This will take a while):")
 	user_count = 0
 	expert_dict = {}
 	for user in users: 
 		user_count += 1
 		num_hs = is_expert(user)
-		if num_hs > 0:
+		if num_hs >= MIN_HIGHSCORES_PER_EXPERT:
 			expert_dict[user[0]] = num_hs
 			print('!',end='')
 		if user_count % 5 == 0:
@@ -242,7 +241,7 @@ def import_categories():
 				if cat not in PIDS_BY_CAT.keys():
 					PIDS_BY_CAT[cat] = []
 				PIDS_BY_CAT[cat].append(pid)
-	print("Imported puzzle categories.")
+	print("Imported " + str(len(PIDS_BY_CAT)) + " puzzle categories.")
 	drop_cats = []
 	for cat in PIDS_BY_CAT.keys():
 		num_puz = len(PIDS_BY_CAT[cat])
@@ -254,6 +253,16 @@ def import_categories():
 			drop_cats.append(cat)
 	for cat in drop_cats:
 		PIDS_BY_CAT.pop(cat, None)
+		
+def import_experts(recalculate=False):
+	global EXPERTS
+	if recalculate:
+		get_all_experts()
+	with open('experts.csv', 'r') as exp_file:
+		reader = csv.reader(exp_file)
+		for row in reader:
+			EXPERTS.append(row[0])
+	print("Imported " + str(len(EXPERTS)) + " experts.")
 		
 # -------- END ONE TIME FUNCTIONS -----------------
 
@@ -432,7 +441,7 @@ if __name__ == "__main__":
 	parser.add_argument('-debug', action='store_true', help="Print debug info.")
 	parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
 	parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
-	parser.add_argument('--execute', default="", help="Query to input.")
+	parser.add_argument('--execute', default="", help="Run a single SQL query.")
 	args = parser.parse_args()
 	
 	print("Loading modules and data...")
@@ -441,6 +450,7 @@ if __name__ == "__main__":
 	conn = sqlite3.connect('folditx.db')
 	c = conn.cursor()
 	import_categories()
+	import_experts(recalculate=False)
 	print("...Loaded.")
 	
 	if args.test:
