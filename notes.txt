@@ -2,50 +2,37 @@ RQs
 How do players look at Foldit puzzles?
 What information is valuable to players to solve a puzzle?
 
-QUERIES
-For puzzles of a given type:
-- do high scores share views?
-- do experts share views?
+FILTERS
+- OPTIONS error = 0
+- RPRP_PUZZLE_RANKS is_valid = 1
+- no data from intro levels (i.e. don't have an entry in the puzzle table)
+- no data from beginner levels (names start with Beginner)
 
-Do groups share views?
-
-Descriptive stats on view options
-
-What view options are correlated with each other?
-
-Do players use the same view for different puzzle types?
-
-Are players consistent in how they set views for puzzle types?
-
-Can you predict expertise based on view options? What carries predictive value?
-
-Do players change their views a lot? Do experts change their views? Do they change their views on particular puzzle types?
-
------- OTHER QUESTIONS
-
-So a few interesting things to do, I think:
-- filter out those options that are for introductory puzzles (I think these would be ones that don't have an entry in the puzzle table) and possibly also beginner puzzles (whose names start with beginner)
-- cluster players some of the other view options (ie, clashes/voids/hydrophobics, dark background, advanced mode, maybe others)
-
-Top players: players who ranked in the top N soloists or evolvers in at least 3 puzzles
-- use the ranks data to determine which are the "top" players and see what kinds of options they use
+VIEW
+Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
 
 
-Questions:
-1. What options do people actually use?
-compare option settings to defaults; but note some options are changed by intro puzzles so we’d need to account for that
-
-2. Are there consistent groupings of options players use together?
-cluster options
-
-3. What options do top players use? Do they change options often? Can we predict how well a player will do based on their options settings?
-regression
-
-
-4. Do players in the same group use options to look the protein in similar or different ways? Are players in a group specializing?
-
-
-
+TODO
+1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
+-- 1b. Clean db; for example many ints are written as u'0'
+-- 1c. [TODO - get new table from Jeff] Link puzzle titles to Foldit Categories (Overall, Prediction, etc.)
+2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange. -- When I tried to cluster with Orange, it ran out of memory
+3. Descriptive statistics for the Views:
+-- 3a. Overall
+-- 3b. Clustered by puzzle type
+-- 3c. Clustered by expert / non-expert (see definition of expert in #4)
+4. View Sharing. Define similarity as Euclidian distance between Views, calculated per element so we can consider the similarity between two Views as a vector of distances. The within-cluster similarity is the average of similarities between a View and every other View in the cluster (O(n^2) time). For each cluster, for each dimension, can report mean, SD, kurtosis, skew, and a graph. Can report summary data as the sum of distances.
+-- 4a. Define a high scoring View as one which is in the top 5% of Views for a particular puzzle. Define an expert as a player with at least X high scoring Views, where X is the smallest number that results in experts being fewer than 5% of the players (probably 1-3 Views).
+-- 4b. On average, how similar is each player to themselves? What if puzzle type is accounted for?
+-- 4c. On average, how similar are experts? How similar are they per puzzle type, and what is the centroid View?
+-- 4d. On average, how similar are high scoring views? How similar are they per puzzle type, and what is the centroid View?
+-- 4e. On average, how similar are players within a group? How similar are they per puzzle type, and what is the centroid View?
+5. What view options are correlated with each other? Simply a correlation matrix of all data.
+-- 5a. Split by expert / non-expert, then re-run
+6. How often do players change their views? Within a player, report percentage as number of unique view option settings / total Views. Report with the count of total Views for context.
+-- 6a. Split by expert / non-expert, then re-run
+-- 6b. Split again by puzzle-type, then re-run
+7. Can we predict metadata based on data? Train linear regression models on the View data, for either expertise or Best score. How accurate is the model? What weight parameters are learned?
 
 
 ---- COLUMN INFO ----
@@ -56,8 +43,8 @@ seq
 
 RPRP_PUZZLE_RANKS
 type - 1=soloist, 2=evolver
-pid
-uid
+pid - puzzle id
+uid - user id
 best_score
 cur_score
 changed
@@ -66,8 +53,8 @@ is_valid
 
 RPNODE__PUZZLE
 nid - puzzle id
-vid
-type
+vid - version id
+type -- just "puzzle"
 title
 uid
 status
@@ -81,24 +68,24 @@ tnid
 translate
 
 OPTIONS
-uid - user id
-pid - puzzle id
-time - unix timestamp
-error - flag for processing error
-advanced_mode
-autoshow_chat__global
-autoshow_chat__group
-autoshow_chat__puzzle
+uid - user id - ulong
+pid - puzzle id - int
+time - unix timestamp - int
+error - flag for processing error - int
+advanced_mode 
+autoshow_chat__global 
+autoshow_chat__group 
+autoshow_chat__puzzle 
 autoshow_chat__veteran
 autoshow_notifications
 chat__auto_reconnect
 chat__disable_non_group
 chat_enable_public_profainty_filter
 cleanup_temp_files
-electron_density_panel__alpha
+electron_density_panel__alpha - float 0:1
 electron_density_panel__backface_culling
-electron_density_panel__color
-electron_density_panel__threshold
+electron_density_panel__color - RGB
+electron_density_panel__threshold - 
 electron_density_panel__visualization
 graph_options__graph_length_value
 graph_options__graph_memory_value
