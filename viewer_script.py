@@ -170,26 +170,45 @@ def test(args):
 	#main_stats()
 	#centroid_test()
 	
-	count_missing()
 
 	
 	print("Done.")
 	
+# prints out number of missing entries for each option
+# reads 2000 entries at a time
 def count_missing():
-	pass
-	#c.execute('''select * from options''')
-	#for o in FULL_OPTIONS_LIST:
-	#	try:
-	#		c.execute(FREQ_COUNT_QUERY % (o,o,o))
-	#		print(o.upper())
-	#		print(c.fetchall())
-	#	except Exception as e:
-	#		print("Invalid option: " + str(o))
+	rows_counted = 0
+	missing_dict = {}
+	list_of_options = []
+	for o in BINARY_OPTIONS:
+		missing_dict[o] = 0
+		list_of_options.append(o)
+	for cat in CAT_OPTIONS:
+		for o in CAT_OPTIONS[cat]:
+			missing_dict[o] = 0
+			list_of_options.append(o)
+	views = query_to_views("limit 2000 offset " + str(rows_counted)) # whole db, iteratively
+	while views is not None:
+		ll = []
+		for (id,view) in iteritems(views):
+			ll.append(view_dict_to_list(view))
+		for l in ll:
+			for i in range(len(list_of_options)):
+				if l[i] is None or l[i] == "None":
+					missing_dict[list_of_options[i]] += 1
+				if rows_counted % 2000 == 0 and l is ll[0]:
+					if i == 0:
+						print("\nRows counted = " + str(rows_counted))
+					print(list_of_options[i] + ": " + str(missing_dict[list_of_options[i]]))
+					if i >= len(list_of_options)-1:
+						print("\nRows counted = " + str(rows_counted))
+		rows_counted += 2000
+		views = query_to_views("limit 2000 offset " + str(rows_counted)) # whole db, iteratively
 
 
 def centroid_test():
 	# Get total centroid
-	views = query_to_views("limit 3") # whole db
+	views = query_to_views("limit 3") # whole db, TEST limit 3
 	cluster = []
 	for (id,view) in iteritems(views):
 		cluster.append(view_dict_to_list(view))
@@ -329,8 +348,8 @@ def query_to_views(where):
 			if unique_id not in views:
 				views[unique_id] = {}
 			view = views[unique_id]
-			if result[3] == "None" or result[3] is None: # TEST
-				print(bin_opt)
+			#if result[3] == "None" or result[3] is None: # TEST
+			#	print(bin_opt)
 			view[bin_opt] = result[3]
 			views[unique_id] = view
 	for cat_opt in CAT_OPTIONS.keys():
@@ -416,8 +435,8 @@ def apply_inverse_entropy_weighting(view):
 # O(n^2) algorithm 
 def density(cluster, dims=[-1]):
 	distances = []
-	for i in len(cluster):
-		for j in len(cluster):
+	for i in range(len(cluster)):
+		for j in range(len(cluster)):
 			if i != j:
 				if dims == [-1]:
 					distances.append(distance(cluster[i], cluster[j]))
