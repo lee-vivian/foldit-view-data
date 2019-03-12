@@ -53,13 +53,11 @@ EXPERTS = []
 
 BINARY_OPTIONS = [
 	"advanced_mode",
-	"electron_density_panel__backface_culling", 
+	"electron_density_panel__backface_culling",
 	"music", 
 	"puzzle_dialog__show_beginner", 
 	"puzzle_dialog__show_old", 
 	"rank_popups", 
-	"reduce_bandwidth", 
-	"render__option__shader_outline", 
 	"selection_mode", 
 	"selection_mode__show_notes", 
 	"sound", 
