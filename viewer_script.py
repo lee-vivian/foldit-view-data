@@ -105,7 +105,7 @@ FULL_OPTIONS_LIST = [
 	"autoshow_notifications",
 	"chat__auto_reconnect",
 	"chat__disable_non_group",
-	"chat_enable_public_profainty_filter", 
+	"chat__enable_public_profanity_filter", 
 	"cleanup_temp_files",
  	"electron_density_panel__alpha", 
 	"electron_density_panel__backface_culling", 
@@ -170,7 +170,26 @@ def test(args):
 	# Tests go here
 		
 	#main_stats()
+	#centroid_test()
 	
+	count_missing()
+
+	
+	print("Done.")
+	
+def count_missing():
+	pass
+	#c.execute('''select * from options''')
+	#for o in FULL_OPTIONS_LIST:
+	#	try:
+	#		c.execute(FREQ_COUNT_QUERY % (o,o,o))
+	#		print(o.upper())
+	#		print(c.fetchall())
+	#	except Exception as e:
+	#		print("Invalid option: " + str(o))
+
+
+def centroid_test():
 	# Get total centroid
 	views = query_to_views("limit 3") # whole db
 	cluster = []
@@ -183,8 +202,6 @@ def test(args):
 	print("Centroid:")
 	print(list_to_view_dict(centroid(cluster)))
 	
-	print("Done.")
-
 # ------------ END TEST BED -----------------------
 
 
