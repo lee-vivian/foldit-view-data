@@ -54,10 +54,10 @@ EXPERTS = []
 BINARY_OPTIONS = [
 	"advanced_mode",
 	"electron_density_panel__backface_culling",
-	"music", 
-	"puzzle_dialog__show_beginner", 
-	"puzzle_dialog__show_old", 
-	"rank_popups", 
+	"music",
+	"puzzle_dialog__show_beginner",
+	"puzzle_dialog__show_old",
+	"rank_popups",
 	"selection_mode", 
 	"selection_mode__show_notes", 
 	"sound", 
@@ -95,7 +95,7 @@ CAT_OPTIONS = {
 }
 
 FULL_OPTIONS_LIST = [
-	"advanced_mode", 
+	"advanced_mode",
 	"autoshow_chat__global",
 	"autoshow_chat__group",
 	"autoshow_chat__puzzle",
@@ -103,7 +103,7 @@ FULL_OPTIONS_LIST = [
 	"autoshow_notifications",
 	"chat__auto_reconnect",
 	"chat__disable_non_group",
-	"chat__enable_public_profanity_filter", 
+	"chat__enable_public_profanity_filter",
 	"cleanup_temp_files",
  	"electron_density_panel__alpha", 
 	"electron_density_panel__backface_culling", 
@@ -169,11 +169,11 @@ def test(args):
 		
 	#main_stats()
 	#centroid_test()
-	
 
-	
+
+
 	print("Done.")
-	
+
 # prints out number of missing entries for each option
 # reads 2000 entries at a time
 def count_missing():
@@ -218,7 +218,7 @@ def centroid_test():
 	print(density(cluster))
 	print("Centroid:")
 	print(list_to_view_dict(centroid(cluster)))
-	
+
 # ------------ END TEST BED -----------------------
 
 
@@ -288,10 +288,38 @@ def get_all_entropies(output=False):
 			print(option + ": " + str(en))	
 			
 def clean_db():
-	pass
-	#for o in FULL_OPTIONS_LIST:
-		# c.execute( # TODO, remove unicode
-		
+    # remove puzzle options with errors
+    c.execute("delete from options where error == 1")
+
+    # remove invalid puzzle ranks
+    c.execute("delete from rrp_puzzle_ranks where is_valid == 0")
+
+    # remove data for beginner puzzles (puzzles, options, and rank data)
+    beginner_puzzles = PIDS_BY_CAT['Beginner']
+
+    for pid in beginner_puzzles:
+        c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
+        c.execute('''delete from options where pid == %d''' % pid)
+        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+
+    # remove data for intro puzzles (options and rank data)
+
+    c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
+    options_to_remove = [row[0] for row in c.fetchall()]
+
+    for pid in options_to_remove:
+        c.execute('''delete from options where pid == %d''' % pid)
+
+    c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
+    ranks_to_remove = [row[0] for row in c.fetchall()]
+
+    for pid in ranks_to_remove:
+        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+
+    # save changes to database
+    conn.commit()
+
+
 def import_categories():
 	global PIDS_BY_CAT
 	with open('puzzle_categories.csv', 'r') as cat_file:
@@ -557,26 +585,31 @@ def io_mode(args):
 	if not single_query:
 		print("Goodbye")
 
+
 if __name__ == "__main__":
-	import argparse
-	prog_desc = "Foldit view options analysis."
-	parser = argparse.ArgumentParser(description=prog_desc)
-	parser.add_argument('-debug', action='store_true', help="Print debug info.")
-	parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
-	parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
-	parser.add_argument('--execute', default="", help="Run a single SQL query.")
-	args = parser.parse_args()
-	
-	print("Loading modules and data...")
-	import math, operator, csv, sys, numpy, sqlite3
-	# import scikit, pandas, and/or oranges?
-	conn = sqlite3.connect('folditx.db')
-	c = conn.cursor()
-	import_categories()
-	import_experts(recalculate=False)
-	print("...Loaded.")
-	
-	if args.test:
-		test(args)
-	else:
-		io_mode(args)
+    import argparse
+
+    prog_desc = "Foldit view options analysis."
+    parser = argparse.ArgumentParser(description=prog_desc)
+    parser.add_argument('-debug', action='store_true', help="Print debug info.")
+    parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
+    parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
+    parser.add_argument('--execute', default="", help="Run a single SQL query.")
+    args = parser.parse_args()
+
+    print("Loading modules and data...")
+    import math, operator, csv, sys, numpy, sqlite3
+
+    # import scikit, pandas, and/or oranges?
+    conn = sqlite3.connect('folditx.db')
+    c = conn.cursor()
+    import_categories()
+    import_experts(recalculate=False)
+    clean_db()
+
+print("...Loaded.")
+
+if args.test:
+    test(args)
+else:
+    io_mode(args)
