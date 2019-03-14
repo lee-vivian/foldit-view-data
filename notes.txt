@@ -7,6 +7,19 @@ FILTERS
 - RPRP_PUZZLE_RANKS is_valid = 1
 - no data from intro levels (i.e. don't have an entry in the puzzle table)
 - no data from beginner levels (names start with Beginner) -> see also puzzle categories
+- if there is missing data in the Options (i.e., one of the columns is None) and it's not one of these options (**note** that this filter should only be catching about 250 entries. If it's catching significantly more than that, let me know, and try to debug what option(s) are being listed as the reason to throw out the data point):
+---puzzle_dialog__show_beginner
+---rank_popups
+---selection_mode
+---selection_mode__show_notes
+---tooltips
+---view_options__guide_pulse
+---view_options__show_backbone_issues
+---view_options__show_residue_burial
+---view_options__sym_chain_colors
+---view_options__sym_chain_visible
+
+
 
 VIEW
 Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
