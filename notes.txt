@@ -2,11 +2,11 @@ RQs
 How do players look at Foldit puzzles?
 What information is valuable to players to solve a puzzle?
 
-FILTERS
-- OPTIONS error = 0
-- RPRP_PUZZLE_RANKS is_valid = 1
-- no data from intro levels (i.e. don't have an entry in the puzzle table)
-- no data from beginner levels (names start with Beginner) -> see also puzzle categories
+FILTERS (implemented in clean_db func)
+- [DONE] OPTIONS error = 0
+- [DONE] RPRP_PUZZLE_RANKS is_valid = 1
+- [DONE] no data from intro levels (i.e. don't have an entry in the puzzle table)
+- [DONE] no data from beginner levels (names start with Beginner) -> see also puzzle categories
 - if there is missing data in the Options (i.e., one of the columns is None) and it's not one of these options (**note** that this filter should only be catching about 250 entries. If it's catching significantly more than that, let me know, and try to debug what option(s) are being listed as the reason to throw out the data point):
 ---puzzle_dialog__show_beginner
 ---rank_popups
