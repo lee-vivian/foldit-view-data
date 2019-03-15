@@ -51,6 +51,18 @@ PIDS_BY_CAT = {}
 ENTROPY_DICT = {}
 EXPERTS = []
 
+# For these options, there is a lot of missing data - replace missing with default value
+MISSING_DEFAULTS = {
+	"puzzle_dialog__show_beginner" : 0,
+	"selection_mode": 0,
+	"selection_mode__show_notes": 1,
+	"tooltips": 1,
+	"view_options__guide_pulse": 1,
+	"view_options__show_backbone_issues": 0,
+	"view_options__show_residue_burial": 0,
+	"view_options__sym_chain_colors": 0,
+}
+
 BINARY_OPTIONS = [
 	"advanced_mode",
 	"electron_density_panel__backface_culling",
@@ -84,7 +96,6 @@ BINARY_OPTIONS = [
 	"view_options__show_sidechains_with_issues", 
 	"view_options__show_voids", 
 	"view_options__sym_chain_colors", 
-	"view_options__sym_chain_visible", 
 	"view_options__working_pulse_style", 
 ]
 
@@ -157,21 +168,8 @@ FULL_OPTIONS_LIST = [
 	"view_options__show_voids", 
 	"view_options__sidechain_mode", 
 	"view_options__sym_chain_colors", 
-	"view_options__sym_chain_visible", 
+	"view_options__sym_chain_visible", # not enough valid data to make use of
 	"view_options__working_pulse_style", 
-]
-
-OPTIONAL_OPTIONS_LIST = [
-	"puzzle_dialog__show_beginner",
-	"rank_popups",
-	"selection_mode",
-	"selection_mode__show_notes",
-	"tooltips",
-	"view_options__guide_pulse",
-	"view_options__show_backbone_issues",
-	"view_options__show_residue_burial",
-	"view_options__sym_chain_colors",
-	"view_options__sym_chain_visible"
 ]
 
 # --------------- TEST BED -------------------------
@@ -298,65 +296,71 @@ def get_all_entropies(output=False):
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
-			print(option + ": " + str(en))
+			print(option + ": " + str(en))	
+	
+# TODO return number of entries removed	
+def remove_error_entries():
+    c.execute("delete from options where error == 1")
+	return 0
+	
+# TODO return number of entries removed
+def remove_invalid_puzzle_ranks():
+    c.execute("delete from rprp_puzzle_ranks where is_valid == 0")
+	return 0
 
-
-def clean_db():
-
-    options_pids_to_remove = set()
-    rank_pids_to_remove = set()
-    puzzle_nids_to_remove = set()
-
-    # get puzzle options with errors
-    c.execute("select pid from options where error == 1")
-    options_pids_to_remove.update([row[0] for row in c.fetchall()])
-
-    # get invalid puzzle ranks
-    c.execute("select pid from rrp_puzzle_ranks where is_valid == 0")
-    rank_pids_to_remove.update([row[0] for row in c.fetchall()])
-
-    # remove data for beginner puzzles (puzzles, options, and rank data)
-    beginner_puzzles = PIDS_BY_CAT['Beginner']
-
-    options_pids_to_remove.update(beginner_puzzles)
-    rank_pids_to_remove.update(beginner_puzzles)
-    puzzle_nids_to_remove.update(beginner_puzzles)
-
-    # remove data for intro puzzles (options and rank data)
-
-    c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
-    options_pids_to_remove.update([row[0] for row in c.fetchall()])
-
+# TODO return number of entries removed
+def remove_beginner_puzzle_entries():
+	beginner_puzzles = PIDS_BY_CAT['Beginner']
+    for pid in beginner_puzzles:
+        c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
+        c.execute('''delete from options where pid == %d''' % pid)
+        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+	return 0
+		
+# TODO return number of entries removed
+def remove_intro_puzzle_entries():
+	c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
+    options_to_remove = [row[0] for row in c.fetchall()]
+    for pid in options_to_remove:
+        c.execute('''delete from options where pid == %d''' % pid)
     c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
-    rank_pids_to_remove.update([row[0] for row in c.fetchall()])
-
-    # handle missing data in options table
-
-    for o in FULL_OPTIONS_LIST:
-        if o not in OPTIONAL_OPTIONS_LIST:
-            c.execute('''select pid from options where %s is null''' % o)
-            options_pids_to_remove.update([row[0] for row in c.fetchall()])
-
-    # remove records from options table
-    for opid in options_pids_to_remove:
-        c.execute('''delete from options where pid == %d''' % opid)
-
-    # remove records from ranks table
-    for rpid in rank_pids_to_remove:
-        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' %rpid)
-
-    # remove records from puzzles table
-    for pnid in puzzle_nids_to_remove:
-        c.execute('''delete from rpnode_puzzle where nid == %d''' % pnid)
-
-    # log number of records removed per table
-    print("options records removed: " + str(len(options_pids_to_remove)))
-    print("ranks records removed: " + str(len(rank_pids_to_remove)))
-    print("puzzle records removed: " + str(len(puzzle_nids_to_remove)))
-
-    # save changes to database
-    conn.commit()
-
+    ranks_to_remove = [row[0] for row in c.fetchall()]
+    for pid in ranks_to_remove:
+        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+	return 0
+			
+# TODO (when options we expect to have data are missing)
+# TODO return a dict of counts for entries removed
+def remove_major_missing_entries():
+	missing_dict = {"total_entry_count":0}
+	# for each entry being removed, total_entry_count++, then:
+	# for each option, if the option in entry is missing,
+	# add to missing_dict "option": +1
+	# return missing dict
+	return missing_dict
+	
+			
+# TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
+def replace_minor_missing_entries():
+	pass
+			
+def clean_db():
+	entries_removed = 0
+    entries_removed += remove_error_entries()
+	entries_removed += remove_invalid_puzzle_ranks()
+	entries_removed += remove_beginner_puzzle_entries()
+	entries_removed += remove_intro_puzzle_entries()
+	missing_dict = remove_major_missing_entries() 
+	entries_removed += missing_dict["total_entry_count"]
+	print("INFO: Removed " + str(entries_removed) + " bad entries from database.")
+	if args.debug:
+		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
+		for option in missing_dict.keys():
+			if option == "total_entry_count":
+				continue
+			print("DEBUG: Removed " + str(missing_dict[option]) " entries because of " + str(option))
+	replace_minor_missing_entries()
+	conn.commit()
 
 def import_categories():
 	global PIDS_BY_CAT
@@ -643,7 +647,7 @@ if __name__ == "__main__":
     c = conn.cursor()
     import_categories()
     import_experts(recalculate=False)
-    clean_db()
+    #clean_db()
 
 print("...Loaded.")
 
