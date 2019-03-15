@@ -301,60 +301,60 @@ def get_all_entropies(output=False):
 			print(option + ": " + str(en))
 
 
-def handle_options_missing_data():
-    options_removable_pids = dict()
-    options_pids_to_remove = set()
-
-    for o in FULL_OPTIONS_LIST:
-
-        if o not in OPTIONAL_OPTIONS_LIST:
-            options_removable_pids[o] = set()
-
-            c.execute('''select pid from options where %s is null''' % o)
-
-            pids_to_remove = [row[0] for row in c.fetchall()]
-
-            # store pids where option o is null for logging purposes
-            options_removable_pids[o].update(pids_to_remove)
-
-            # add pids to remove to set
-            options_pids_to_remove.update(pids_to_remove)
-
-    for opid in options_pids_to_remove:
-        c.execute('''delete from options where pid == %d''' % opid)
-
-
 def clean_db():
-    # remove puzzle options with errors
-    c.execute("delete from options where error == 1")
 
-    # remove invalid puzzle ranks
-    c.execute("delete from rrp_puzzle_ranks where is_valid == 0")
+    options_pids_to_remove = set()
+    rank_pids_to_remove = set()
+    puzzle_nids_to_remove = set()
+
+    # get puzzle options with errors
+    c.execute("select pid from options where error == 1")
+    options_pids_to_remove.update([row[0] for row in c.fetchall()])
+
+    # get invalid puzzle ranks
+    c.execute("select pid from rrp_puzzle_ranks where is_valid == 0")
+    rank_pids_to_remove.update([row[0] for row in c.fetchall()])
 
     # remove data for beginner puzzles (puzzles, options, and rank data)
     beginner_puzzles = PIDS_BY_CAT['Beginner']
 
-    for pid in beginner_puzzles:
-        c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
-        c.execute('''delete from options where pid == %d''' % pid)
-        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+    options_pids_to_remove.update(beginner_puzzles)
+    rank_pids_to_remove.update(beginner_puzzles)
+    puzzle_nids_to_remove.update(beginner_puzzles)
 
     # remove data for intro puzzles (options and rank data)
 
     c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
-    options_to_remove = [row[0] for row in c.fetchall()]
-
-    for pid in options_to_remove:
-        c.execute('''delete from options where pid == %d''' % pid)
+    options_pids_to_remove.update([row[0] for row in c.fetchall()])
 
     c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
-    ranks_to_remove = [row[0] for row in c.fetchall()]
+    rank_pids_to_remove.update([row[0] for row in c.fetchall()])
 
-    for pid in ranks_to_remove:
-        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+    # handle missing data in options table
 
-    handle_options_missing_data()
+    for o in FULL_OPTIONS_LIST:
+        if o not in OPTIONAL_OPTIONS_LIST:
+            c.execute('''select pid from options where %s is null''' % o)
+            options_pids_to_remove.update([row[0] for row in c.fetchall()])
 
+    # remove records from options table
+    for opid in options_pids_to_remove:
+        c.execute('''delete from options where pid == %d''' % opid)
+
+    # remove records from ranks table
+    for rpid in rank_pids_to_remove:
+        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' %rpid)
+
+    # remove records from puzzles table
+    for pnid in puzzle_nids_to_remove:
+        c.execute('''delete from rpnode_puzzle where nid == %d''' % pnid)
+
+    # log number of records removed per table
+    print("options records removed: " + str(len(options_pids_to_remove)))
+    print("ranks records removed: " + str(len(rank_pids_to_remove)))
+    print("puzzle records removed: " + str(len(puzzle_nids_to_remove)))
+
+    # save changes to database
     conn.commit()
 
 
