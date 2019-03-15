@@ -161,6 +161,19 @@ FULL_OPTIONS_LIST = [
 	"view_options__working_pulse_style", 
 ]
 
+OPTIONAL_OPTIONS_LIST = [
+	"puzzle_dialog__show_beginner",
+	"rank_popups",
+	"selection_mode",
+	"selection_mode__show_notes",
+	"tooltips",
+	"view_options__guide_pulse",
+	"view_options__show_backbone_issues",
+	"view_options__show_residue_burial",
+	"view_options__sym_chain_colors",
+	"view_options__sym_chain_visible"
+]
+
 # --------------- TEST BED -------------------------
 # place to run tests
 def test(args):
@@ -316,9 +329,31 @@ def clean_db():
     for pid in ranks_to_remove:
         c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
 
-    # save changes to database
-    conn.commit()
+    # handle missing data in options table
+    options_removable_pids = dict()
+	options_pids_to_remove = set()
 
+	for o in FULL_OPTIONS_LIST:
+
+		if o not in OPTIONAL_OPTIONS_LIST:
+
+			options_removable_pids[o] = set()
+
+			c.execute('''select pid from options where %s is null''' % o)
+
+			pids_to_remove = [row[0] for row in c.fetchall()]
+
+			# store pids where option o is null for logging purposes
+			options_removable_pids[o].update(pids_to_remove)
+
+			# add pids to remove to set
+			options_pids_to_remove.update(pids_to_remove)
+
+	for opid in options_pids_to_remove:
+		c.execute('''delete from options where pid == %d''' % opid)
+
+    # save changes to database
+	conn.commit()
 
 def import_categories():
 	global PIDS_BY_CAT
