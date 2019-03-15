@@ -355,6 +355,7 @@ def clean_db():
     # save changes to database
 	conn.commit()
 
+
 def import_categories():
 	global PIDS_BY_CAT
 	with open('puzzle_categories.csv', 'r') as cat_file:
