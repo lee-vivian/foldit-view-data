@@ -355,7 +355,6 @@ def remove_major_missing_entries():
 	sep = ","
 	query_cols = sep.join(["uid", "pid", "time"] + all_options)
 
-
 	missing_dict = {"total_entry_count":0}
 	for option in all_options:
 		if option not in MISSING_DEFAULTS.keys():
@@ -391,8 +390,40 @@ def remove_major_missing_entries():
 	return missing_dict
 
 
-# TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
 def replace_minor_missing_entries():
+
+	minor_options = MISSING_DEFAULTS.keys()
+	sep = ","
+	query_cols = sep.join(["uid", "pid", "time"] + minor_options)
+
+	c.execute('''select %s from options''' % query_cols)
+	results = c.fetchall()
+
+	for entry in range(len(results)):
+
+		# names of minor options to update if they have missing values
+		options_to_update = []
+
+		# unique identifier cols for an entry
+		uid, pid, time = results[entry][0:3]
+
+		# for all minor options in the entry
+		for o_index in range(len(entry) - 3):
+
+			if results[entry][3 + o_index] is None:
+
+				o_name = minor_options[o_index]
+				options_to_update.append(o_name)
+
+		# update minor options in entry is they had missing values
+		if len(options_to_update) > 0:
+
+			updated_options_values = [str(MISSING_DEFAULTS[o]) for o in options_to_update]
+
+			update_query = ",".join(["=".join(a) for a in zip(options_to_update, updated_options_values)])
+
+			c.execute('''update options set %s where uid == %d and pid == %d and time == %d'''
+					  % (update_query, uid, pid, time))
 
 
 def clean_db():
