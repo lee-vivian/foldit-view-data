@@ -297,22 +297,27 @@ def get_all_entropies(output=False):
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
 			print(option + ": " + str(en))	
-			
+	
+# TODO return number of entries removed	
 def remove_error_entries():
     c.execute("delete from options where error == 1")
-
-
+	return 0
+	
+# TODO return number of entries removed
 def remove_invalid_puzzle_ranks():
     c.execute("delete from rprp_puzzle_ranks where is_valid == 0")
+	return 0
 
-
+# TODO return number of entries removed
 def remove_beginner_puzzle_entries():
 	beginner_puzzles = PIDS_BY_CAT['Beginner']
     for pid in beginner_puzzles:
         c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
         c.execute('''delete from options where pid == %d''' % pid)
         c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+	return 0
 		
+# TODO return number of entries removed
 def remove_intro_puzzle_entries():
 	c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
     options_to_remove = [row[0] for row in c.fetchall()]
@@ -322,21 +327,38 @@ def remove_intro_puzzle_entries():
     ranks_to_remove = [row[0] for row in c.fetchall()]
     for pid in ranks_to_remove:
         c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+	return 0
 			
 # TODO (when options we expect to have data are missing)
+# TODO return a dict of counts for entries removed
 def remove_major_missing_entries():
-	pass
+	missing_dict = {"total_entry_count":0}
+	# for each entry being removed, total_entry_count++, then:
+	# for each option, if the option in entry is missing,
+	# add to missing_dict "option": +1
+	# return missing dict
+	return missing_dict
+	
 			
 # TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
 def replace_minor_missing_entries():
 	pass
 			
 def clean_db():
-    remove_error_entries()
-	remove_invalid_puzzle_ranks()
-	remove_beginner_puzzle_entries()
-	remove_intro_puzzle_entries()
-	remove_major_missing_entries() 
+	entries_removed = 0
+    entries_removed += remove_error_entries()
+	entries_removed += remove_invalid_puzzle_ranks()
+	entries_removed += remove_beginner_puzzle_entries()
+	entries_removed += remove_intro_puzzle_entries()
+	missing_dict = remove_major_missing_entries() 
+	entries_removed += missing_dict["total_entry_count"]
+	print("INFO: Removed " + str(entries_removed) + " bad entries from database.")
+	if args.debug:
+		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
+		for option in missing_dict.keys():
+			if option == "total_entry_count":
+				continue
+			print("DEBUG: Removed " + str(missing_dict[option]) " entries because of " + str(option))
 	replace_minor_missing_entries()
 	conn.commit()
 
