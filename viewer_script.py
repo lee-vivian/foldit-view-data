@@ -51,6 +51,18 @@ PIDS_BY_CAT = {}
 ENTROPY_DICT = {}
 EXPERTS = []
 
+# For these options, there is a lot of missing data - replace missing with default value
+MISSING_DEFAULTS = {
+	"puzzle_dialog__show_beginner" : 0,
+	"selection_mode": 0,
+	"selection_mode__show_notes": 1,
+	"tooltips": 1,
+	"view_options__guide_pulse": 1,
+	"view_options__show_backbone_issues": 0,
+	"view_options__show_residue_burial": 0,
+	"view_options__sym_chain_colors": 0,
+}
+
 BINARY_OPTIONS = [
 	"advanced_mode",
 	"electron_density_panel__backface_culling",
@@ -84,7 +96,6 @@ BINARY_OPTIONS = [
 	"view_options__show_sidechains_with_issues", 
 	"view_options__show_voids", 
 	"view_options__sym_chain_colors", 
-	"view_options__sym_chain_visible", 
 	"view_options__working_pulse_style", 
 ]
 
@@ -157,7 +168,7 @@ FULL_OPTIONS_LIST = [
 	"view_options__show_voids", 
 	"view_options__sidechain_mode", 
 	"view_options__sym_chain_colors", 
-	"view_options__sym_chain_visible", 
+	"view_options__sym_chain_visible", # not enough valid data to make use of
 	"view_options__working_pulse_style", 
 ]
 
@@ -287,38 +298,47 @@ def get_all_entropies(output=False):
 		for option, en in sorted_dict:
 			print(option + ": " + str(en))	
 			
-def clean_db():
-    # remove puzzle options with errors
+def remove_error_entries():
     c.execute("delete from options where error == 1")
 
-    # remove invalid puzzle ranks
-    c.execute("delete from rrp_puzzle_ranks where is_valid == 0")
 
-    # remove data for beginner puzzles (puzzles, options, and rank data)
-    beginner_puzzles = PIDS_BY_CAT['Beginner']
+def remove_invalid_puzzle_ranks():
+    c.execute("delete from rprp_puzzle_ranks where is_valid == 0")
 
+
+def remove_beginner_puzzle_entries():
+	beginner_puzzles = PIDS_BY_CAT['Beginner']
     for pid in beginner_puzzles:
         c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
         c.execute('''delete from options where pid == %d''' % pid)
         c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-
-    # remove data for intro puzzles (options and rank data)
-
-    c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
+		
+def remove_intro_puzzle_entries():
+	c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
     options_to_remove = [row[0] for row in c.fetchall()]
-
     for pid in options_to_remove:
         c.execute('''delete from options where pid == %d''' % pid)
-
     c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
     ranks_to_remove = [row[0] for row in c.fetchall()]
-
     for pid in ranks_to_remove:
         c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-
-    # save changes to database
-    conn.commit()
-
+			
+# TODO (when options we expect to have data are missing)
+def remove_major_missing_entries():
+	pass
+			
+# TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
+def replace_minor_missing_entries():
+	pass
+			
+def clean_db():
+    remove_error_entries()
+	remove_invalid_puzzle_ranks()
+	remove_beginner_puzzle_entries()
+	remove_intro_puzzle_entries()
+	remove_major_missing_entries() 
+	replace_minor_missing_entries()
+	conn.commit()
 
 def import_categories():
 	global PIDS_BY_CAT
@@ -605,7 +625,7 @@ if __name__ == "__main__":
     c = conn.cursor()
     import_categories()
     import_experts(recalculate=False)
-    clean_db()
+    #clean_db()
 
 print("...Loaded.")
 
