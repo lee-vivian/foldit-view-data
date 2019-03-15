@@ -304,7 +304,9 @@ def remove_error_entries():
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
-	return len(entries_to_remove)
+	num_removed = len(entries_to_remove)
+	print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
+	return num_removed
 
 
 def remove_invalid_puzzle_ranks():
@@ -312,6 +314,10 @@ def remove_invalid_puzzle_ranks():
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
 		c.execute('''delete from rrp_puzzle_ranks where pid == %d''' % pid)
+	num_removed = len(entries_to_remove)
+	print("DEBUG: Removed " + str(num_removed) +
+		  " entries from rprp_puzzle_ranks with invalid puzzle ranks")
+
 	return len(entries_to_remove)
 
 
@@ -334,7 +340,15 @@ def remove_beginner_puzzle_entries():
 	for pid in ranks_to_remove:
 		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
 
-	return len(puzzles_to_remove) + len(options_to_remove) + len(ranks_to_remove)
+	num_puzzles_to_remove = len(puzzles_to_remove)
+	num_options_to_remove = len(options_to_remove)
+	num_ranks_to_remove = len(ranks_to_remove)
+
+	print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode_puzzle for beginner puzzles")
+	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for beginner puzzles")
+	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
+
+	return sum(num_puzzles_to_remove, num_options_to_remove, num_ranks_to_remove)
 
 
 def remove_intro_puzzle_entries():
@@ -346,7 +360,13 @@ def remove_intro_puzzle_entries():
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 	for pid in ranks_to_remove:
 		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-	return len(options_to_remove) + len(ranks_to_remove)
+
+	num_ranks_to_remove = len(ranks_to_remove)
+	num_options_to_remove = len(options_to_remove)
+	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for intro puzzles")
+	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+
+	return sum(num_options_to_remove, num_ranks_to_remove)
 
 
 def remove_major_missing_entries():
