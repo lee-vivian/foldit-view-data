@@ -35,7 +35,7 @@ VIEW (conceptual struct):
 QUERY EXAMPLES
 
 Count values of an option:
-    select advanced_mode, count(advanced_mode) from options group by advanced_mode
+	select advanced_mode, count(advanced_mode) from options group by advanced_mode
 	
 	
 USEFUL CODE TIDBITS
@@ -70,33 +70,33 @@ BINARY_OPTIONS = [
 	"puzzle_dialog__show_beginner",
 	"puzzle_dialog__show_old",
 	"rank_popups",
-	"selection_mode", 
-	"selection_mode__show_notes", 
-	"sound", 
-	"switch_middle_right_click", 
-	"switch_residue_colors", 
-	"tooltips", 
-	"view_options__dark_background", 
-	"view_options__gui_fade", 
-	"view_options__guide_pulse", 
-	"view_options__relative_score_coloring", 
-	"view_options__show_backbone_issues", 
-	"view_options__show_bondable_atoms", 
-	"view_options__show_buried_polars", 
-	"view_options__show_clashes", 
-	"view_options__show_contact_map_geoms", 
-	"view_options__show_hbonds", 
-	"view_options__show_helix_hbonds", 
-	"view_options__show_issues", 
-	"view_options__show_non_protein_hbonds", 
-	"view_options__show_other_hbonds", 
-	"view_options__show_outlines", 
-	"view_options__show_residue_burial", 
-	"view_options__show_sidechain_hbonds", 
-	"view_options__show_sidechains_with_issues", 
-	"view_options__show_voids", 
-	"view_options__sym_chain_colors", 
-	"view_options__working_pulse_style", 
+	"selection_mode",
+	"selection_mode__show_notes",
+	"sound",
+	"switch_middle_right_click",
+	"switch_residue_colors",
+	"tooltips",
+	"view_options__dark_background",
+	"view_options__gui_fade",
+	"view_options__guide_pulse",
+	"view_options__relative_score_coloring",
+	"view_options__show_backbone_issues",
+	"view_options__show_bondable_atoms",
+	"view_options__show_buried_polars",
+	"view_options__show_clashes",
+	"view_options__show_contact_map_geoms",
+	"view_options__show_hbonds",
+	"view_options__show_helix_hbonds",
+	"view_options__show_issues",
+	"view_options__show_non_protein_hbonds",
+	"view_options__show_other_hbonds",
+	"view_options__show_outlines",
+	"view_options__show_residue_burial",
+	"view_options__show_sidechain_hbonds",
+	"view_options__show_sidechains_with_issues",
+	"view_options__show_voids",
+	"view_options__sym_chain_colors",
+	"view_options__working_pulse_style",
 ]
 
 CAT_OPTIONS = {
@@ -116,60 +116,60 @@ FULL_OPTIONS_LIST = [
 	"chat__disable_non_group",
 	"chat__enable_public_profanity_filter",
 	"cleanup_temp_files",
- 	"electron_density_panel__alpha", 
-	"electron_density_panel__backface_culling", 
-	"electron_density_panel__color", 
-	"electron_density_panel__threshold", 
-	"electron_density_panel__visualization", 
-	"graph_options__graph_length_value", 
-	"graph_options__graph_memory_value", 
-	"gui__desired_fps", 
-	"gui__desired_window_height", 
-	"gui__desired_window_width", 
-	"gui__file_dir", 
-	"gui__image_dir", 
-	"login_dialog__disable_timeouts", 
-	"login_dialog__player", 
-	"login_dialog__proxy", 
-	"login_dialog__use_proxy", 
-	"music", 
-	"puzzle_dialog__show_beginner", 
-	"puzzle_dialog__show_old", 
-	"rank_popups", 
-	"reduce_bandwidth", 
-	"render__option__shader_outline", 
-	"selection_mode", 
-	"selection_mode__show_notes", 
-	"sound", 
-	"switch_middle_right_click", 
-	"switch_residue_colors", 
-	"tooltips", 
+	"electron_density_panel__alpha",
+	"electron_density_panel__backface_culling",
+	"electron_density_panel__color",
+	"electron_density_panel__threshold",
+	"electron_density_panel__visualization",
+	"graph_options__graph_length_value",
+	"graph_options__graph_memory_value",
+	"gui__desired_fps",
+	"gui__desired_window_height",
+	"gui__desired_window_width",
+	"gui__file_dir",
+	"gui__image_dir",
+	"login_dialog__disable_timeouts",
+	"login_dialog__player",
+	"login_dialog__proxy",
+	"login_dialog__use_proxy",
+	"music",
+	"puzzle_dialog__show_beginner",
+	"puzzle_dialog__show_old",
+	"rank_popups",
+	"reduce_bandwidth",
+	"render__option__shader_outline",
+	"selection_mode",
+	"selection_mode__show_notes",
+	"sound",
+	"switch_middle_right_click",
+	"switch_residue_colors",
+	"tooltips",
 	"update_group",  # several options, but probably split into =="main" true or false
-	"view_options__current_visor", 
-	"view_options__dark_background", 
-	"view_options__gui_fade", 
-	"view_options__guide_pulse", 
-	"view_options__relative_score_coloring", 
-	"view_options__render_style", 
-	"view_options__show_backbone_issues", 
-	"view_options__show_bondable_atoms", 
-	"view_options__show_buried_polars", 
-	"view_options__show_clashes", 
-	"view_options__show_contact_map_geoms", 
-	"view_options__show_hbonds", 
-	"view_options__show_helix_hbonds", 
-	"view_options__show_issues", 
-	"view_options__show_non_protein_hbonds", 
-	"view_options__show_other_hbonds", 
-	"view_options__show_outlines", 
-	"view_options__show_residue_burial", 
-	"view_options__show_sidechain_hbonds", 
-	"view_options__show_sidechains_with_issues", 
-	"view_options__show_voids", 
-	"view_options__sidechain_mode", 
-	"view_options__sym_chain_colors", 
+	"view_options__current_visor",
+	"view_options__dark_background",
+	"view_options__gui_fade",
+	"view_options__guide_pulse",
+	"view_options__relative_score_coloring",
+	"view_options__render_style",
+	"view_options__show_backbone_issues",
+	"view_options__show_bondable_atoms",
+	"view_options__show_buried_polars",
+	"view_options__show_clashes",
+	"view_options__show_contact_map_geoms",
+	"view_options__show_hbonds",
+	"view_options__show_helix_hbonds",
+	"view_options__show_issues",
+	"view_options__show_non_protein_hbonds",
+	"view_options__show_other_hbonds",
+	"view_options__show_outlines",
+	"view_options__show_residue_burial",
+	"view_options__show_sidechain_hbonds",
+	"view_options__show_sidechains_with_issues",
+	"view_options__show_voids",
+	"view_options__sidechain_mode",
+	"view_options__sym_chain_colors",
 	"view_options__sym_chain_visible", # not enough valid data to make use of
-	"view_options__working_pulse_style", 
+	"view_options__working_pulse_style",
 ]
 
 # --------------- TEST BED -------------------------
@@ -177,7 +177,7 @@ FULL_OPTIONS_LIST = [
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
-		
+
 	#main_stats()
 	#centroid_test()
 
@@ -238,16 +238,16 @@ def centroid_test():
 
 # Calculate and print full report of interesting stats
 def main_stats():
-	pass 
-	
+	pass
+
 	# TODO apply filters
-	
+
 	# Cluster by expert/non, report clustering statistics
-	
+
 	# Cluster by high score / not, report clustering statistics
-	
+
 	# Cluster by puzzle category, report clustering statistics
-	
+
 
 def freq_all():
 	for o in FULL_OPTIONS_LIST:
@@ -266,7 +266,7 @@ def get_all_experts():
 	print("Identifying experts (This will take a while):")
 	user_count = 0
 	expert_dict = {}
-	for user in users: 
+	for user in users:
 		user_count += 1
 		num_hs = is_expert(user)
 		if num_hs >= MIN_HIGHSCORES_PER_EXPERT:
@@ -279,7 +279,7 @@ def get_all_experts():
 	with open('experts.csv', 'w') as expert_file:
 		writer = csv.writer(expert_file)
 		writer.writerows(sorted_experts)
-		
+
 def get_all_entropies(output=False):
 	global ENTROPY_DICT
 	ENTROPY_DICT = defaultdict(float)
@@ -296,61 +296,88 @@ def get_all_entropies(output=False):
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
-			print(option + ": " + str(en))	
-	
-# TODO return number of entries removed	
-def remove_error_entries():
-    c.execute("delete from options where error == 1")
-	return 0
-	
-# TODO return number of entries removed
-def remove_invalid_puzzle_ranks():
-    c.execute("delete from rprp_puzzle_ranks where is_valid == 0")
-	return 0
+			print(option + ": " + str(en))
 
-# TODO return number of entries removed
+
+def remove_error_entries():
+	c.execute("select pid from options where error == 1")
+	entries_to_remove = [row[0] for row in c.fetchall()]
+	for pid in entries_to_remove:
+		c.execute('''delete from options where pid == %d''' % pid)
+	return len(entries_to_remove)
+
+
+def remove_invalid_puzzle_ranks():
+	c.execute("select pid from rprp_puzzle_ranks where is_valid == 0")
+	entries_to_remove = [row[0] for row in c.fetchall()]
+	for pid in entries_to_remove:
+		c.execute('''delete from rrp_puzzle_ranks where pid == %d''' % pid)
+	return len(entries_to_remove)
+
+
 def remove_beginner_puzzle_entries():
 	beginner_puzzles = PIDS_BY_CAT['Beginner']
-    for pid in beginner_puzzles:
-        c.execute('''delete from rpnode_puzzle where nid == %d''' % pid)
-        c.execute('''delete from options where pid == %d''' % pid)
-        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-	return 0
-		
-# TODO return number of entries removed
+	str_beginner_puzzles = str(tuple(beginner_puzzles))
+
+	c.execute('''select nid from rpnode_puzzle where nid in %s''' % str_beginner_puzzles)
+	puzzles_to_remove = [row[0] for row in c.fetchall()]
+	for nid in puzzles_to_remove:
+		c.execute('''delete from rpnode_puzzle where nid == %d''' & nid)
+
+	c.execute('''select pid from options where pid in %s''' % str_beginner_puzzles)
+	options_to_remove = [row[0] for row in c.fetchall()]
+	for pid in options_to_remove:
+		c.execute('''delete from options where pid == %d''' % pid)
+
+	c.execute('''select pid from rrrp_puzzle_ranks where pid in %s''' % str_beginner_puzzles)
+	ranks_to_remove = [row[0] for row in c.fetchall()]
+	for pid in ranks_to_remove:
+		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+
+	return len(puzzles_to_remove) + len(options_to_remove) + len(ranks_to_remove)
+
+
 def remove_intro_puzzle_entries():
 	c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
-    options_to_remove = [row[0] for row in c.fetchall()]
-    for pid in options_to_remove:
-        c.execute('''delete from options where pid == %d''' % pid)
-    c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
-    ranks_to_remove = [row[0] for row in c.fetchall()]
-    for pid in ranks_to_remove:
-        c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-	return 0
-			
+	options_to_remove = [row[0] for row in c.fetchall()]
+	for pid in options_to_remove:
+		c.execute('''delete from options where pid == %d''' % pid)
+	c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
+	ranks_to_remove = [row[0] for row in c.fetchall()]
+	for pid in ranks_to_remove:
+		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+	return len(options_to_remove) + len(ranks_to_remove)
+
 # TODO (when options we expect to have data are missing)
 # TODO return a dict of counts for entries removed
 def remove_major_missing_entries():
+
 	missing_dict = {"total_entry_count":0}
+
 	# for each entry being removed, total_entry_count++, then:
 	# for each option, if the option in entry is missing,
 	# add to missing_dict "option": +1
 	# return missing dict
+
+	# c.execute("select * from options")
+	# options_data = [row for row in c.fetchall()]
+	#
+	# for o in FULL_OPTIONS_LIST:
+
 	return missing_dict
-	
-			
+
+
 # TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
 def replace_minor_missing_entries():
-	pass
-			
+
+
 def clean_db():
 	entries_removed = 0
-    entries_removed += remove_error_entries()
+	entries_removed += remove_error_entries()
 	entries_removed += remove_invalid_puzzle_ranks()
 	entries_removed += remove_beginner_puzzle_entries()
 	entries_removed += remove_intro_puzzle_entries()
-	missing_dict = remove_major_missing_entries() 
+	missing_dict = remove_major_missing_entries()
 	entries_removed += missing_dict["total_entry_count"]
 	print("INFO: Removed " + str(entries_removed) + " bad entries from database.")
 	if args.debug:
@@ -386,7 +413,7 @@ def import_categories():
 			drop_cats.append(cat)
 	for cat in drop_cats:
 		PIDS_BY_CAT.pop(cat, None)
-		
+
 def import_experts(recalculate=False):
 	global EXPERTS
 	if recalculate:
@@ -396,7 +423,7 @@ def import_experts(recalculate=False):
 		for row in reader:
 			EXPERTS.append(row[0])
 	print("Imported " + str(len(EXPERTS)) + " experts.")
-		
+
 # -------- END ONE TIME FUNCTIONS -----------------
 
 
@@ -435,9 +462,9 @@ def query_to_views(where):
 					view[opt] = 1
 				else:
 					view[opt] = 0
-			views[unique_id] = view		
+			views[unique_id] = view
 	return views
-			
+
 # Input: view dict from query_to_views
 # Output: list of just the values in a sorted order to keep things consistent
 def view_dict_to_list(view):
@@ -448,7 +475,7 @@ def view_dict_to_list(view):
 		for opt in CAT_OPTIONS[cat_opt]:
 			list.append(view[opt])
 	return list
-	
+
 # TODO doesn't work if some of the dimensions were deleted during analysis
 # The reverse of view_dict_to_list
 # Input: list of just the view option values in a sorted order to keep things consistent
@@ -461,7 +488,7 @@ def list_to_view_dict(list):
 		for opt in CAT_OPTIONS[cat_opt]:
 			view[opt] = list.pop(0)
 	return view
-	
+
 
 # Returns true iff score is <= 5% of best scores for this puzzle
 def is_highscore(pid, score):
@@ -472,7 +499,7 @@ def is_highscore(pid, score):
 	index = min(int(math.ceil(num_scores*0.05)), len(results)-1) # prevent index out of range error
 	min_score = results[index][1]
 	return score <= min_score
-	
+
 # Returns number of high scores in puzzles
 def is_expert(uid):
 	# get list of their best scores for each puzzle
@@ -484,25 +511,25 @@ def is_expert(uid):
 		if is_highscore(result[0], result[1]):
 			num_highscores += 1
 	return num_highscores # TODO change to bool
-	
+
 
 # calculates the similarity between two views - Euclidean distance
 # assumes views are a vector of interval variables
 def distance(view1, view2):
 	dist = [(a - b)**2 for a, b in zip(view1, view2)]
 	return math.sqrt(sum(dist)) # apparently this method is faster than external lib methods
-	
+
 
 # TODO
 # Input: a full vector of view data that can correspond somehow to known values of entropy for each attr
 # Output: the vector of data, elementwise multiplied by (1-entropy)
 def apply_inverse_entropy_weighting(view):
 	pass
-	
+
 # calculates the density of a cluster - i.e., the mean similarity between every view and every other view
 # returns mean and std
 # if dims option is set, calculates density only for specific dimension(s)
-# O(n^2) algorithm 
+# O(n^2) algorithm
 def density(cluster, dims=[-1]):
 	distances = []
 	for i in range(len(cluster)):
@@ -524,7 +551,7 @@ def density(cluster, dims=[-1]):
 	mean = numpy.mean(distances)
 	std = numpy.std(distances)
 	return mean,std
-	
+
 # TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
 # returns the centroid of a cluster
 # if dims option is set, calculates for only specific dimension(s)
@@ -533,20 +560,20 @@ def centroid(clus, dims=[-1]):
 		cluster = numpy.delete(clus, dims, axis=1)
 	return numpy.mean(cluster)
 
-	
+
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
 	p = count_1 / (count_0 + count_1)
 	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
 
 # -------- END VIEW-BASED CALCULATIONS -------------
-	
-	
-	
+
+
+
 
 # ----------------- MAIN ---------------------------
 
-def io_mode(args):	
+def io_mode(args):
 	single_query = args.execute != '' or args.quick != ''
 	command = ''
 	if args.execute:
@@ -555,9 +582,9 @@ def io_mode(args):
 		command = args.quick
 	while (command != 'q' and command != 'exit'):
 		command = command.lower()
-		
+
 		if command == 'h':
-			
+
 			print("h - help")
 			print("q - quit")
 			print("t - list tables") # options, rpnode__puzzle, sqlite_sequence, rprp_puzzle_ranks
@@ -566,12 +593,12 @@ def io_mode(args):
 			print("freq [option] - count values of an option (or 'all')")
 			print("ent [option] - get entropy of option (or 'all')")
 			print("experts - count and list all experts")
-		
+
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
 			for t in c.fetchall():
 				print(t[0])
-				
+
 		if command.startswith("c "):
 			table = command[2:]
 			try:
@@ -580,10 +607,10 @@ def io_mode(args):
 					print(info[0])
 			except:
 				print("Invalid table name: " + str(table))
-				
+
 		if command == "experts":
 			get_all_experts()
-			
+
 		if command == "freq all":
 			freq_all()
 		elif command.startswith("freq "):
@@ -593,7 +620,7 @@ def io_mode(args):
 				print(c.fetchall())
 			except Exception as e:
 				print("Invalid option: " + str(option))
-				
+
 		if command == "ent all":
 			get_all_entropies(output=True)
 		elif command.startswith("ent "):
@@ -607,7 +634,7 @@ def io_mode(args):
 				print(entropy(count_0, count_1))
 			except Exception as e:
 				print("Invalid option: " + str(option))
-				
+
 		if command.startswith("e "):
 			com = command[2:]
 			if not com.endswith(";"): # be nice to user, append ; if need be
@@ -618,7 +645,7 @@ def io_mode(args):
 			except sqlite3.OperationalError as e:
 				print("ERR: unable to perform operation")
 				print("INFO: " + str(e))
-				
+
 		if not single_query:
 			print("Enter command (h for help): ")
 			command = input("> ")
@@ -629,29 +656,31 @@ def io_mode(args):
 
 
 if __name__ == "__main__":
-    import argparse
+	import argparse
 
-    prog_desc = "Foldit view options analysis."
-    parser = argparse.ArgumentParser(description=prog_desc)
-    parser.add_argument('-debug', action='store_true', help="Print debug info.")
-    parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
-    parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
-    parser.add_argument('--execute', default="", help="Run a single SQL query.")
-    args = parser.parse_args()
+	prog_desc = "Foldit view options analysis."
+	parser = argparse.ArgumentParser(description=prog_desc)
+	parser.add_argument('-debug', action='store_true', help="Print debug info.")
+	parser.add_argument('--test', action='store_true', help="Run test suite instead of I/O operations.")
+	parser.add_argument('--quick', default="", help="Quick I/O command, e.g. 't' to list tables.")
+	parser.add_argument('--execute', default="", help="Run a single SQL query.")
+	args = parser.parse_args()
 
-    print("Loading modules and data...")
-    import math, operator, csv, sys, numpy, sqlite3
+	print("Loading modules and data...")
+	import math, operator, csv, sys, numpy, sqlite3
 
-    # import scikit, pandas, and/or oranges?
-    conn = sqlite3.connect('folditx.db')
-    c = conn.cursor()
-    import_categories()
-    import_experts(recalculate=False)
-    #clean_db()
+	# import scikit, pandas, and/or oranges?
+	global conn
+	conn = sqlite3.connect('folditx.db')
+	global c
+	c = conn.cursor()
+	import_categories()
+	import_experts(recalculate=False)
+	#clean_db()
 
 print("...Loaded.")
 
 if args.test:
-    test(args)
+	test(args)
 else:
-    io_mode(args)
+	io_mode(args)
