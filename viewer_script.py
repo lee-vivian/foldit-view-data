@@ -348,21 +348,45 @@ def remove_intro_puzzle_entries():
 		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
 	return len(options_to_remove) + len(ranks_to_remove)
 
-# TODO (when options we expect to have data are missing)
-# TODO return a dict of counts for entries removed
+
 def remove_major_missing_entries():
 
+	all_options = BINARY_OPTIONS + CAT_OPTIONS.keys()
+	sep = ","
+	query_cols = sep.join(["uid", "pid", "time"] + all_options)
+
+
 	missing_dict = {"total_entry_count":0}
+	for option in all_options:
+		if option not in MISSING_DEFAULTS.keys():
+			missing_dict[option] = 0
 
-	# for each entry being removed, total_entry_count++, then:
-	# for each option, if the option in entry is missing,
-	# add to missing_dict "option": +1
-	# return missing dict
+	c.execute('''select %s from options''' % query_cols)
+	results = c.fetchall()
 
-	# c.execute("select * from options")
-	# options_data = [row for row in c.fetchall()]
-	#
-	# for o in FULL_OPTIONS_LIST:
+	for entry in range(len(results)):
+
+		num_major_options_missing = 0
+		uid, pid, time = results[entry][0:3]
+
+		# for all options in the entry
+		for o_index in range(len(entry) - 3):
+
+			o_name = all_options[o_index]
+
+			# if we expect to have data for this option but do not
+			if o_name not in MISSING_DEFAULTS.keys():
+
+				# increment counts for missing option
+				if results[entry][3 + o_index] is None:
+					num_major_options_missing += 1
+					missing_dict[o_name] += 1
+
+		# remove entry from options table if it has any major options missing
+		if num_major_options_missing > 0:
+			missing_dict["total_entry_count"] += 1
+			c.execute('''delete from options where uid == %d and pid == %d and time == %d'''
+					  % (uid, pid, time))
 
 	return missing_dict
 
