@@ -304,7 +304,9 @@ def remove_error_entries():
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
-	return len(entries_to_remove)
+	num_removed = len(entries_to_remove)
+	print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
+	return num_removed
 
 
 def remove_invalid_puzzle_ranks():
@@ -312,6 +314,10 @@ def remove_invalid_puzzle_ranks():
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
 		c.execute('''delete from rrp_puzzle_ranks where pid == %d''' % pid)
+	num_removed = len(entries_to_remove)
+	print("DEBUG: Removed " + str(num_removed) +
+		  " entries from rprp_puzzle_ranks with invalid puzzle ranks")
+
 	return len(entries_to_remove)
 
 
@@ -334,7 +340,15 @@ def remove_beginner_puzzle_entries():
 	for pid in ranks_to_remove:
 		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
 
-	return len(puzzles_to_remove) + len(options_to_remove) + len(ranks_to_remove)
+	num_puzzles_to_remove = len(puzzles_to_remove)
+	num_options_to_remove = len(options_to_remove)
+	num_ranks_to_remove = len(ranks_to_remove)
+
+	print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode_puzzle for beginner puzzles")
+	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for beginner puzzles")
+	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
+
+	return sum(num_puzzles_to_remove, num_options_to_remove, num_ranks_to_remove)
 
 
 def remove_intro_puzzle_entries():
@@ -346,29 +360,90 @@ def remove_intro_puzzle_entries():
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 	for pid in ranks_to_remove:
 		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
-	return len(options_to_remove) + len(ranks_to_remove)
 
-# TODO (when options we expect to have data are missing)
-# TODO return a dict of counts for entries removed
+	num_ranks_to_remove = len(ranks_to_remove)
+	num_options_to_remove = len(options_to_remove)
+	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for intro puzzles")
+	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+
+	return sum(num_options_to_remove, num_ranks_to_remove)
+
+
 def remove_major_missing_entries():
 
+	all_options = BINARY_OPTIONS + CAT_OPTIONS.keys()
+	sep = ","
+	query_cols = sep.join(["uid", "pid", "time"] + all_options)
+
 	missing_dict = {"total_entry_count":0}
+	for option in all_options:
+		if option not in MISSING_DEFAULTS.keys():
+			missing_dict[option] = 0
 
-	# for each entry being removed, total_entry_count++, then:
-	# for each option, if the option in entry is missing,
-	# add to missing_dict "option": +1
-	# return missing dict
+	c.execute('''select %s from options''' % query_cols)
+	results = c.fetchall()
 
-	# c.execute("select * from options")
-	# options_data = [row for row in c.fetchall()]
-	#
-	# for o in FULL_OPTIONS_LIST:
+	for entry in range(len(results)):
+
+		num_major_options_missing = 0
+		uid, pid, time = results[entry][0:3]
+
+		# for all options in the entry
+		for o_index in range(len(entry) - 3):
+
+			o_name = all_options[o_index]
+
+			# if we expect to have data for this option but do not
+			if o_name not in MISSING_DEFAULTS.keys():
+
+				# increment counts for missing option
+				if results[entry][3 + o_index] is None:
+					num_major_options_missing += 1
+					missing_dict[o_name] += 1
+
+		# remove entry from options table if it has any major options missing
+		if num_major_options_missing > 0:
+			missing_dict["total_entry_count"] += 1
+			c.execute('''delete from options where uid == %d and pid == %d and time == %d'''
+					  % (uid, pid, time))
 
 	return missing_dict
 
 
-# TODO for options that have lots of missing data, replace with value from MISSING_DEFAULTS
 def replace_minor_missing_entries():
+
+	minor_options = MISSING_DEFAULTS.keys()
+	sep = ","
+	query_cols = sep.join(["uid", "pid", "time"] + minor_options)
+
+	c.execute('''select %s from options''' % query_cols)
+	results = c.fetchall()
+
+	for entry in range(len(results)):
+
+		# names of minor options to update if they have missing values
+		options_to_update = []
+
+		# unique identifier cols for an entry
+		uid, pid, time = results[entry][0:3]
+
+		# for all minor options in the entry
+		for o_index in range(len(entry) - 3):
+
+			if results[entry][3 + o_index] is None:
+
+				o_name = minor_options[o_index]
+				options_to_update.append(o_name)
+
+		# update minor options in entry is they had missing values
+		if len(options_to_update) > 0:
+
+			updated_options_values = [str(MISSING_DEFAULTS[o]) for o in options_to_update]
+
+			update_query = ",".join(["=".join(a) for a in zip(options_to_update, updated_options_values)])
+
+			c.execute('''update options set %s where uid == %d and pid == %d and time == %d'''
+					  % (update_query, uid, pid, time))
 
 
 def clean_db():
