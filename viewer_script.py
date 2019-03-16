@@ -298,78 +298,97 @@ def get_all_entropies(output=False):
 		for option, en in sorted_dict:
 			print(option + ": " + str(en))
 
-
+# ------------ CLEAN DATABASE -----------------
+			
 def remove_error_entries():
+	if args.debug:
+		print("DEBUG: Removing entries with errors...")
 	c.execute("select pid from options where error == 1")
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
 	num_removed = len(entries_to_remove)
-	print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
+	if args.debug:
+		print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
 	return num_removed
 
 
 def remove_invalid_puzzle_ranks():
+	if args.debug:
+		print("DEBUG: Removing invalid puzzle rank entries...")
 	c.execute("select pid from rprp_puzzle_ranks where is_valid == 0")
 	entries_to_remove = [row[0] for row in c.fetchall()]
 	for pid in entries_to_remove:
-		c.execute('''delete from rrp_puzzle_ranks where pid == %d''' % pid)
+		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 	num_removed = len(entries_to_remove)
-	print("DEBUG: Removed " + str(num_removed) +
+	
+	if args.debug:
+		print("DEBUG: Removed " + str(num_removed) +
 		  " entries from rprp_puzzle_ranks with invalid puzzle ranks")
-
-	return len(entries_to_remove)
 
 
 def remove_beginner_puzzle_entries():
 	beginner_puzzles = PIDS_BY_CAT['Beginner']
 	str_beginner_puzzles = str(tuple(beginner_puzzles))
 
-	c.execute('''select nid from rpnode_puzzle where nid in %s''' % str_beginner_puzzles)
+	if args.debug:
+		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
+	c.execute('''select nid from rpnode__puzzle where nid in %s''' % str_beginner_puzzles)
 	puzzles_to_remove = [row[0] for row in c.fetchall()]
 	for nid in puzzles_to_remove:
-		c.execute('''delete from rpnode_puzzle where nid == %d''' & nid)
+		c.execute('''delete from rpnode__puzzle where nid == %d''' % nid)
 
+	if args.debug:
+		print("DEBUG: Removing Beginner entries from options...")
 	c.execute('''select pid from options where pid in %s''' % str_beginner_puzzles)
 	options_to_remove = [row[0] for row in c.fetchall()]
 	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
 
-	c.execute('''select pid from rrrp_puzzle_ranks where pid in %s''' % str_beginner_puzzles)
+	if args.debug:
+		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
+	c.execute('''select pid from rprp_puzzle_ranks where pid in %s''' % str_beginner_puzzles)
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 	for pid in ranks_to_remove:
-		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 
 	num_puzzles_to_remove = len(puzzles_to_remove)
 	num_options_to_remove = len(options_to_remove)
 	num_ranks_to_remove = len(ranks_to_remove)
 
-	print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode_puzzle for beginner puzzles")
-	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for beginner puzzles")
-	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
+	if args.debug:
+		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
+		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
+		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
 
-	return sum(num_puzzles_to_remove, num_options_to_remove, num_ranks_to_remove)
+	return num_options_to_remove #sum(num_puzzles_to_remove, num_options_to_remove, num_ranks_to_remove)
 
 
 def remove_intro_puzzle_entries():
-	c.execute("select pid from options where pid not in (select nid from rpnode_puzzle)")
+	if args.debug:
+		print("DEBUG: Removing Intro entries...")
+	c.execute("select pid from options where pid not in (select nid from rpnode__puzzle)")
 	options_to_remove = [row[0] for row in c.fetchall()]
 	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
-	c.execute("select pid from rrrp_puzzle_ranks where pid not in (select nid from rpnode_puzzle)")
+	c.execute("select pid from rprp_puzzle_ranks where pid not in (select nid from rpnode__puzzle)")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 	for pid in ranks_to_remove:
-		c.execute('''delete from rrrp_puzzle_ranks where pid == %d''' % pid)
+		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 
 	num_ranks_to_remove = len(ranks_to_remove)
 	num_options_to_remove = len(options_to_remove)
-	print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rrrp_puzzle_ranks for intro puzzles")
-	print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+	
+	if args.debug:
+		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
+		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
 
-	return sum(num_options_to_remove, num_ranks_to_remove)
+	return num_options_to_remove #sum(num_options_to_remove, num_ranks_to_remove)
 
 
 def remove_major_missing_entries():
+	if args.debug:
+		print("DEBUG: Removing entries with major missing data...")
 
 	all_options = BINARY_OPTIONS + CAT_OPTIONS.keys()
 	sep = ","
@@ -411,7 +430,8 @@ def remove_major_missing_entries():
 
 
 def replace_minor_missing_entries():
-
+	if args.debug:
+		print("DEBUG: Replacing minor missing data entries with default values...")
 	minor_options = MISSING_DEFAULTS.keys()
 	sep = ","
 	query_cols = sep.join(["uid", "pid", "time"] + minor_options)
@@ -447,22 +467,25 @@ def replace_minor_missing_entries():
 
 
 def clean_db():
+	print("INFO: Cleaning database (this may take a while)...")
 	entries_removed = 0
 	entries_removed += remove_error_entries()
-	entries_removed += remove_invalid_puzzle_ranks()
+	remove_invalid_puzzle_ranks() # doesn't remove any options entries
 	entries_removed += remove_beginner_puzzle_entries()
 	entries_removed += remove_intro_puzzle_entries()
 	missing_dict = remove_major_missing_entries()
 	entries_removed += missing_dict["total_entry_count"]
-	print("INFO: Removed " + str(entries_removed) + " bad entries from database.")
+	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
 	if args.debug:
 		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
 		for option in missing_dict.keys():
 			if option == "total_entry_count":
 				continue
-			print("DEBUG: Removed " + str(missing_dict[option]) " entries because of " + str(option))
+			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	replace_minor_missing_entries()
 	conn.commit()
+	
+# ------------ END CLEAN DATABASE -----------------
 
 def import_categories():
 	global PIDS_BY_CAT
@@ -751,7 +774,7 @@ if __name__ == "__main__":
 	c = conn.cursor()
 	import_categories()
 	import_experts(recalculate=False)
-	#clean_db()
+	clean_db()
 
 print("...Loaded.")
 
