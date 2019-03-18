@@ -552,7 +552,6 @@ def clean_db():
 	create_beginner_intro_pid_table()
 	remove_beginner_puzzle_entries() # doesn't remove any options entries
 	remove_intro_puzzle_entries() # doesn't remove any options entries
-	print(BEGINNER_INTRO_OPTION_PIDS)
 	# missing_dict = remove_major_missing_entries()
 	# entries_removed += missing_dict["total_entry_count"]
 	# print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
