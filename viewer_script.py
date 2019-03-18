@@ -48,6 +48,7 @@ Convert unicode back into normal string:
 MIN_HIGHSCORES_PER_EXPERT = 2
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
+BEGINNER_INTRO_OPTION_PIDS = {}
 ENTROPY_DICT = {}
 EXPERTS = []
 
@@ -339,7 +340,19 @@ def remove_invalid_puzzle_ranks():
 	print("end: " + str(datetime.datetime.now()))
 
 
+def create_beginner_intro_pid_table():
+
+	global BEGINNER_INTRO_OPTION_PIDS
+
+	c.execute('''select pid from options''')
+	all_pids = [row[0] for row in c.fetchall()]
+	for pid in all_pids:
+		BEGINNER_INTRO_OPTION_PIDS[pid] = False
+
+
 def remove_beginner_puzzle_entries():
+
+	global BEGINNER_INTRO_OPTION_PIDS
 
 	print("Removing Beginner entries...")
 	print("start: " + str(datetime.datetime.now()))
@@ -348,7 +361,7 @@ def remove_beginner_puzzle_entries():
 
 	puzzles_to_remove = []
 	ranks_to_remove = []
-	options_to_remove = []
+	options_to_exclude = []
 
 	print("Gathering beginner puzzles for each table...")
 
@@ -361,11 +374,11 @@ def remove_beginner_puzzle_entries():
 		ranks_to_remove += [row[0] for row in c.fetchall()]
 
 		c.execute('''select pid from options where pid == %d''' % b_pid)
-		options_to_remove += [row[0] for row in c.fetchall()]
+		options_to_exclude += [row[0] for row in c.fetchall()]
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Removing beginner entries from puzzle table")
+	print("Removing " + str(len(puzzles_to_remove)) + " beginner entries from puzzle table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
@@ -374,7 +387,7 @@ def remove_beginner_puzzle_entries():
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Removing beginner entries from ranks table")
+	print("Removing " + str(len(ranks_to_remove)) + " beginner entries from ranks table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
@@ -383,53 +396,72 @@ def remove_beginner_puzzle_entries():
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Removing beginner entries from options table")
+	print("Identifying " + str(len(options_to_exclude)) + "beginner entries from options table")
 
-	if args.debug:
-		print("DEBUG: Removing Beginner entries from options...")
-	for pid in options_to_remove:
-		c.execute('''delete from options where pid == %d''' % pid)
+	for pid in options_to_exclude:
+		BEGINNER_INTRO_OPTION_PIDS[pid] = True
 
-	print("completed: " + str(datetime.datetime.now()))
+	# #
+	# # if args.debug:
+	# # 	print("DEBUG: Removing Beginner entries from options...")
+	# # for pid in options_to_remove:
+	# # 	c.execute('''delete from options where pid == %d''' % pid)
+	#
+	# print("completed: " + str(datetime.datetime.now()))
 
 	num_puzzles_to_remove = len(puzzles_to_remove)
-	num_options_to_remove = len(options_to_remove)
 	num_ranks_to_remove = len(ranks_to_remove)
+	num_options_to_exclude = len(options_to_exclude)
 
 	if args.debug:
 		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
-		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
+		print("DEBUG: Identified " + str(num_options_to_exclude) + " entries from options for beginner puzzles")
 
 	print("entries removed from puzzles: " + str(num_puzzles_to_remove))
 	print("entries removed from ranks: " + str(num_ranks_to_remove))
-	print("entries removed from options: " + str(num_options_to_remove))
 
 	print("end: " + str(datetime.datetime.now()))
 
-	return num_options_to_remove
-
 
 def remove_intro_puzzle_entries():
+
+	global BEGINNER_INTRO_OPTION_PIDS
+
+	print("Removing Intro entries ...")
+
 	if args.debug:
 		print("DEBUG: Removing Intro entries...")
-	c.execute("select pid from options where pid not in (select nid from rpnode__puzzle)")
-	options_to_remove = [row[0] for row in c.fetchall()]
-	for pid in options_to_remove:
-		c.execute('''delete from options where pid == %d''' % pid)
+
 	c.execute("select pid from rprp_puzzle_ranks where pid not in (select nid from rpnode__puzzle)")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
+
+	print("Removing " + str(len(ranks_to_remove)) + " ranks from ranks table")
+
 	for pid in ranks_to_remove:
 		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 
+	print("complete: " + str(datetime.datetime.now()))
+
+	c.execute("select pid from options where pid not in (select nid from rpnode__puzzle)")
+	options_to_exclude = [row[0] for row in c.fetchall()]
+
+	print("Identifying " + str(len(options_to_exclude)) + " options to exclude from options table")
+
+	for pid in options_to_exclude:
+		BEGINNER_INTRO_OPTION_PIDS[pid] = True
+
+
+	print("complete: " + str(datetime.datetime.now()))
+
+
 	num_ranks_to_remove = len(ranks_to_remove)
-	num_options_to_remove = len(options_to_remove)
+	num_options_to_exclude = len(options_to_exclude)
 	
 	if args.debug:
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
-		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+		print("DEBUG: Identified " + str(num_options_to_exclude) + " entries from options for intro puzzles")
 
-	return num_options_to_remove
 
 
 def remove_major_missing_entries():
@@ -517,8 +549,10 @@ def clean_db():
 	entries_removed = 0
 	entries_removed += remove_error_entries()
 	remove_invalid_puzzle_ranks() # doesn't remove any options entries
-	entries_removed += remove_beginner_puzzle_entries()
-	# entries_removed += remove_intro_puzzle_entries()
+	create_beginner_intro_pid_table()
+	remove_beginner_puzzle_entries() # doesn't remove any options entries
+	remove_intro_puzzle_entries() # doesn't remove any options entries
+	print(BEGINNER_INTRO_OPTION_PIDS)
 	# missing_dict = remove_major_missing_entries()
 	# entries_removed += missing_dict["total_entry_count"]
 	# print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
