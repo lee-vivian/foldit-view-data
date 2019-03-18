@@ -378,7 +378,11 @@ def remove_beginner_puzzle_entries():
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Removing " + str(len(puzzles_to_remove)) + " beginner entries from puzzle table")
+	num_puzzles_to_remove = len(puzzles_to_remove)
+	num_ranks_to_remove = len(ranks_to_remove)
+	num_options_to_exclude = len(options_to_exclude)
+
+	print("Removing " + str(num_puzzles_to_remove) + " beginner entries from puzzle table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
@@ -387,7 +391,7 @@ def remove_beginner_puzzle_entries():
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Removing " + str(len(ranks_to_remove)) + " beginner entries from ranks table")
+	print("Removing " + str(num_ranks_to_remove) + " beginner entries from ranks table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
@@ -396,7 +400,7 @@ def remove_beginner_puzzle_entries():
 
 	print("completed: " + str(datetime.datetime.now()))
 
-	print("Identifying " + str(len(options_to_exclude)) + "beginner entries from options table")
+	print("Identifying " + str(num_options_to_exclude) + " beginner entries from options table")
 
 	for pid in options_to_exclude:
 		BEGINNER_INTRO_OPTION_PIDS[pid] = True
@@ -409,17 +413,10 @@ def remove_beginner_puzzle_entries():
 	#
 	# print("completed: " + str(datetime.datetime.now()))
 
-	num_puzzles_to_remove = len(puzzles_to_remove)
-	num_ranks_to_remove = len(ranks_to_remove)
-	num_options_to_exclude = len(options_to_exclude)
-
 	if args.debug:
 		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
 		print("DEBUG: Identified " + str(num_options_to_exclude) + " entries from options for beginner puzzles")
-
-	print("entries removed from puzzles: " + str(num_puzzles_to_remove))
-	print("entries removed from ranks: " + str(num_ranks_to_remove))
 
 	print("end: " + str(datetime.datetime.now()))
 
@@ -436,6 +433,8 @@ def remove_intro_puzzle_entries():
 	c.execute("select pid from rprp_puzzle_ranks where pid not in (select nid from rpnode__puzzle)")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 
+	num_ranks_to_remove = len(ranks_to_remove)
+
 	print("Removing " + str(len(ranks_to_remove)) + " ranks from ranks table")
 
 	for pid in ranks_to_remove:
@@ -446,23 +445,18 @@ def remove_intro_puzzle_entries():
 	c.execute("select pid from options where pid not in (select nid from rpnode__puzzle)")
 	options_to_exclude = [row[0] for row in c.fetchall()]
 
-	print("Identifying " + str(len(options_to_exclude)) + " options to exclude from options table")
+	num_options_to_exclude = len(options_to_exclude)
+
+	print("Identifying " + str(len(options_to_exclude)) + " intro options from options table")
 
 	for pid in options_to_exclude:
 		BEGINNER_INTRO_OPTION_PIDS[pid] = True
 
-
 	print("complete: " + str(datetime.datetime.now()))
-
-
-	num_ranks_to_remove = len(ranks_to_remove)
-	num_options_to_exclude = len(options_to_exclude)
 	
 	if args.debug:
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 		print("DEBUG: Identified " + str(num_options_to_exclude) + " entries from options for intro puzzles")
-
-
 
 def remove_major_missing_entries():
 	if args.debug:
