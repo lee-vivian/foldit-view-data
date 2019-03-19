@@ -330,16 +330,11 @@ def remove_invalid_puzzle_ranks():
 
 def remove_beginner_puzzle_entries():
 
-	print("Removing Beginner entries...")
-	print("start: " + str(datetime.datetime.now()))
-
 	beginner_puzzles = map(int, PIDS_BY_CAT['Beginner'])
 
 	puzzles_to_remove = []
 	ranks_to_remove = []
 	options_to_remove = []
-
-	print("Gathering beginner puzzles for each table...")
 
 	for b_pid in beginner_puzzles:
 
@@ -352,56 +347,35 @@ def remove_beginner_puzzle_entries():
 		c.execute('''select pid from options where pid == %d''' % b_pid)
 		options_to_remove += [row[0] for row in c.fetchall()]
 
-	print("completed: " + str(datetime.datetime.now()))
-
 	num_puzzles_to_remove = len(puzzles_to_remove)
 	num_ranks_to_remove = len(ranks_to_remove)
 	num_options_to_remove = len(options_to_remove)
-
-	print("Removing " + str(num_puzzles_to_remove) + " beginner entries from puzzle table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
 	for nid in puzzles_to_remove:
 		c.execute('''delete from rpnode__puzzle where nid == %d''' % nid)
 
-	print("completed: " + str(datetime.datetime.now()))
-
-	print("Removing " + str(num_ranks_to_remove) + " beginner entries from ranks table")
-
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
 	for pid in ranks_to_remove:
 		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
-
-	print("completed: " + str(datetime.datetime.now()))
-
-	print("Removing " + str(num_options_to_remove) + " beginner entries from options table")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from options...")
 	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
 
-	print("completed: " + str(datetime.datetime.now()))
-
 	if args.debug:
 		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
 		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
 
-	print("end: " + str(datetime.datetime.now()))
-
 
 def remove_intro_puzzle_entries():
 
-	print("Removing Intro entries ...")
-	print("start: " + str(datetime.datetime.now()))
-
 	if args.debug:
 		print("DEBUG: Removing Intro entries...")
-
-	print("Gathering intro puzzles for each table...")
 
 	c.execute("select pid from rprp_puzzle_ranks where pid not in (select nid from rpnode__puzzle)")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
@@ -409,34 +383,23 @@ def remove_intro_puzzle_entries():
 	c.execute("select pid from options where pid not in (select nid from rpnode__puzzle)")
 	options_to_remove = [row[0] for row in c.fetchall()]
 
-	print("completed: " + str(datetime.datetime.now()))
-
 	num_ranks_to_remove = len(ranks_to_remove)
 	num_options_to_remove = len(options_to_remove)
-
-	print("Removing " + str(num_ranks_to_remove) + " ranks from ranks table")
 
 	if args.debug:
 		print("DEBUG: Removing Intro entries from rprp_puzzle_ranks...")
 	for pid in ranks_to_remove:
 		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 
-	print("complete: " + str(datetime.datetime.now()))
-
-	print("Removing " + str(num_options_to_remove) + " intro entries from options table")
-
 	if args.debug:
 		print("DEBUG: Removing Intro entries from options...")
 	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
 
-	print("completed: " + str(datetime.datetime.now()))
-
 	if args.debug:
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
 
-	print("end: " + str(datetime.datetime.now()))
 
 def remove_major_missing_entries():
 
@@ -569,7 +532,7 @@ def clean_db():
 	# 			continue
 	# 		print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	# replace_minor_missing_entries()
-	# conn.commit()
+	conn.commit()
 	
 # ------------ END CLEAN DATABASE -----------------
 
