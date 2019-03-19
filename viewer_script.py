@@ -302,15 +302,14 @@ def get_all_entropies(output=False):
 
 import datetime
 
-
 def remove_error_entries():
 	if args.debug:
 		print("DEBUG: Removing entries with errors...")
 	c.execute("select pid from options where error == 1")
-	entries_to_remove = [row[0] for row in c.fetchall()]
-	for pid in entries_to_remove:
+	options_to_remove = [row[0] for row in c.fetchall()]
+	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
-	num_removed = len(entries_to_remove)
+	num_removed = len(options_to_remove)
 	if args.debug:
 		print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
 	return num_removed
@@ -320,55 +319,73 @@ def remove_invalid_puzzle_ranks():
 	if args.debug:
 		print("DEBUG: Removing invalid puzzle rank entries...")
 	c.execute("select pid from rprp_puzzle_ranks where is_valid == 0")
-	entries_to_remove = [row[0] for row in c.fetchall()]
-	for pid in entries_to_remove:
+	ranks_to_remove = [row[0] for row in c.fetchall()]
+	for pid in ranks_to_remove:
 		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
-	num_removed = len(entries_to_remove)
+	num_removed = len(ranks_to_remove)
 	if args.debug:
 		print("DEBUG: Removed " + str(num_removed) +
 			  " entries from rprp_puzzle_ranks with invalid puzzle ranks")
 
+
 def remove_beginner_puzzle_entries():
+	if args.debug:
+		print("DEBUG: Removing Beginner entries...")
 
 	beginner_puzzles = map(int, PIDS_BY_CAT['Beginner'])
+
+	beginner_puzzles_chunks = \
+		[beginner_puzzles[i:i + 100] for i in range(0, len(beginner_puzzles), 100)]
 
 	puzzles_to_remove = []
 	ranks_to_remove = []
 	options_to_remove = []
 
-	for b_pid in beginner_puzzles:
+	for chunk in beginner_puzzles_chunks:
 
-		c.execute('''select nid from rpnode__puzzle where nid == %d''' % b_pid)
+		str_chunk = str(tuple(chunk))
+
+		c.execute('''select nid from rpnode__puzzle where nid IN %s''' % str_chunk)
 		puzzles_to_remove += [row[0] for row in c.fetchall()]
 
-		c.execute('''select pid from rprp_puzzle_ranks where pid == %d''' % b_pid)
+		c.execute('''select pid from rprp_puzzle_ranks where pid IN %s''' % str_chunk)
 		ranks_to_remove += [row[0] for row in c.fetchall()]
 
-		c.execute('''select pid from options where pid == %d''' % b_pid)
+		c.execute('''select pid from options where pid IN %s''' % str_chunk)
 		options_to_remove += [row[0] for row in c.fetchall()]
 
 	num_puzzles_to_remove = len(puzzles_to_remove)
 	num_ranks_to_remove = len(ranks_to_remove)
 	num_options_to_remove = len(options_to_remove)
 
+	puzzles_to_remove_chunks = \
+		[puzzles_to_remove[i:i + 1000] for i in range(0, len(puzzles_to_remove), 1000)]
+
+	ranks_to_remove_chunks = \
+		[ranks_to_remove[i:i + 1000] for i in range(0, len(ranks_to_remove), 1000)]
+
+	options_to_remove_chunks = \
+		[options_to_remove[i:i + 1000] for i in range(0, len(options_to_remove), 1000)]
+
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
-	for nid in puzzles_to_remove:
-		c.execute('''delete from rpnode__puzzle where nid == %d''' % nid)
+	for chunk in puzzles_to_remove_chunks:
+		c.execute('''delete from rpnode__puzzle where nid IN %s''' % str(tuple(chunk)))
+	if args.debug:
+		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
-	for pid in ranks_to_remove:
-		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
+	for chunk in ranks_to_remove_chunks:
+		c.execute('''delete from rprp_puzzle_ranks where pid IN % s''' % str(tuple(chunk)))
+	if args.debug:
+		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
 
 	if args.debug:
 		print("DEBUG: Removing Beginner entries from options...")
-	for pid in options_to_remove:
-		c.execute('''delete from options where pid == %d''' % pid)
-
+	for chunk in options_to_remove_chunks:
+		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
 	if args.debug:
-		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
-		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
 		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
 
 
@@ -386,15 +403,20 @@ def remove_intro_puzzle_entries():
 	num_ranks_to_remove = len(ranks_to_remove)
 	num_options_to_remove = len(options_to_remove)
 
+	ranks_to_remove_chunks = [ranks_to_remove[i:i + 100] for i in range(0, len(ranks_to_remove), 100)]
+
+	options_to_remove_chunks = \
+		[options_to_remove[i:i + 1000] for i in range(0, len(options_to_remove), 1000)]
+
 	if args.debug:
 		print("DEBUG: Removing Intro entries from rprp_puzzle_ranks...")
-	for pid in ranks_to_remove:
-		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
+	for chunk in ranks_to_remove_chunks:
+		c.execute('''delete from rprp_puzzle_ranks where pid IN %s''' % str(tuple(chunk)))
 
 	if args.debug:
 		print("DEBUG: Removing Intro entries from options...")
-	for pid in options_to_remove:
-		c.execute('''delete from options where pid == %d''' % pid)
+	for chunk in options_to_remove_chunks:
+		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
 
 	if args.debug:
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
@@ -532,7 +554,7 @@ def clean_db():
 	# 			continue
 	# 		print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	# replace_minor_missing_entries()
-	conn.commit()
+	# conn.commit()
 	
 # ------------ END CLEAN DATABASE -----------------
 
