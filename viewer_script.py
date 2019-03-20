@@ -489,7 +489,7 @@ def replace_minor_missing_entries():
 	c.execute('''select %s from options''' % query_cols)
 	results = c.fetchall()
 
-	num_entries_updated = 0
+	num_entries_to_update = 0
 
 	for entry_idx in range(len(results)):
 
@@ -508,38 +508,34 @@ def replace_minor_missing_entries():
 		# update minor options in entry is they had missing values
 		if len(options_to_update) > 0:
 
-			num_entries_updated += 1
+			num_entries_to_update += 1
 
-			if num_entries_updated % 100 == 0:
-				print("updated 100: " + str(datetime.datetime.now()))
+			# updated_options_values = [str(MISSING_DEFAULTS[o]) for o in options_to_update]
+			#
+			# update_query = ",".join(["=".join(a) for a in zip(options_to_update, updated_options_values)])
+			#
+			# c.execute('''update options set %s where uid = \"%s\" and pid == %d and time == %d'''
+			# 		  % (update_query, uid, pid, time))
 
-			updated_options_values = [str(MISSING_DEFAULTS[o]) for o in options_to_update]
-
-			update_query = ",".join(["=".join(a) for a in zip(options_to_update, updated_options_values)])
-
-			c.execute('''update options set %s where uid = \"%s\" and pid == %d and time == %d'''
-					  % (update_query, uid, pid, time))
-
-	print("updated " + str(num_entries_updated) + " entries in options")
-	print("end: " + str(datetime.datetime.now()))
+	print("entries to update: " + str(num_entries_to_update))
 
 
 def clean_db():
 	print("INFO: Cleaning database (this may take a while)...")
 	entries_removed = 0
-	entries_removed += remove_error_entries()
-	remove_invalid_puzzle_ranks() # doesn't remove any options entries
-	entries_removed += remove_beginner_puzzle_entries()
-	entries_removed += remove_intro_puzzle_entries()
+	# entries_removed += remove_error_entries()
+	# remove_invalid_puzzle_ranks() # doesn't remove any options entries
+	# entries_removed += remove_beginner_puzzle_entries()
+	# entries_removed += remove_intro_puzzle_entries()
 	missing_dict = remove_major_missing_entries()
-	entries_removed += missing_dict["total_entry_count"]
-	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
-	if args.debug:
-		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
-		for option in missing_dict.keys():
-			if option == "total_entry_count":
-				continue
-			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
+	# entries_removed += missing_dict["total_entry_count"]
+	# print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
+	# if args.debug:
+	# 	print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
+	# 	for option in missing_dict.keys():
+	# 		if option == "total_entry_count":
+	# 			continue
+	# 		print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	# replace_minor_missing_entries()
 	# conn.commit()
 	
