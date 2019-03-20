@@ -446,8 +446,6 @@ def remove_major_missing_entries():
 	c.execute('''select %s from options''' % query_cols)
 	results = c.fetchall()
 
-	print("num option entries: " + str(len(results)))
-
 	for entry_idx in range(len(results)):
 
 		num_major_options_missing = 0
@@ -470,9 +468,7 @@ def remove_major_missing_entries():
 			missing_dict["total_entry_count"] += 1
 			c.execute('''delete from options where uid = \"%s\" and pid == %d and time == %d''' % (uid, pid, time))
 
-		print(missing_dict)
-
-		return missing_dict
+	return missing_dict
 
 
 def replace_minor_missing_entries():
@@ -527,10 +523,10 @@ def replace_minor_missing_entries():
 def clean_db():
 	print("INFO: Cleaning database (this may take a while)...")
 	entries_removed = 0
-	# entries_removed += remove_error_entries()
-	# remove_invalid_puzzle_ranks() # doesn't remove any options entries
-	# entries_removed += remove_beginner_puzzle_entries()
-	# entries_removed += remove_intro_puzzle_entries()
+	entries_removed += remove_error_entries()
+	remove_invalid_puzzle_ranks() # doesn't remove any options entries
+	entries_removed += remove_beginner_puzzle_entries()
+	entries_removed += remove_intro_puzzle_entries()
 	missing_dict = remove_major_missing_entries()
 	entries_removed += missing_dict["total_entry_count"]
 	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
@@ -540,6 +536,7 @@ def clean_db():
 			if option == "total_entry_count":
 				continue
 			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
+	# @TODO sql profling to speed up delete/update queries for remove_major and replace_minor fns
 	# replace_minor_missing_entries()
 	# conn.commit()
 	
