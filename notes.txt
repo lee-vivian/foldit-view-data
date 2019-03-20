@@ -24,17 +24,7 @@ FILTERS (implemented in clean_db func)
 VIEW
 Conceptually, a View has metadata (uid, is_expert, is_highscore, ...) and data (view options). Each data dimension is [0,1] normalized by the range of the raw data. Categorical view options are coded as dummy binary variables.
 
-
 TODO
-1. Convert data into something Orange can read in: http://www.sqlitetutorial.net/sqlite-tutorial/sqlite-export-csv/
--- 1b. Clean db; for example many ints are written as u'0'
--- 1c. Apply filters
--- 1d. How to deal with "None" data?
-2. Apply an exploratory hierarchical agglomerative clustering to the entire dataset; visualize with Orange. -- When I tried to cluster with Orange, it ran out of memory
-3. Descriptive statistics for the Views:
--- 3a. Overall
--- 3b. Clustered by puzzle type
--- 3c. Clustered by expert / non-expert (see definition of expert in #4)
 4. View Sharing. Define similarity as Euclidian distance between Views, calculated per element so we can consider the similarity between two Views as a vector of distances. The within-cluster similarity is the average of similarities between a View and every other View in the cluster (O(n^2) time). For each cluster, for each dimension, can report mean, SD, kurtosis, skew, and a graph. Can report summary data as the sum of distances.
 -- 4a. Define a high scoring View as one which is in the top 5% of Views for a particular puzzle. Define an expert as a player with at least X high scoring Views, where X is the smallest number that results in experts being fewer than 5% of the players (probably 1-3 Views).
 -- 4b. On average, how similar is each player to themselves? What if puzzle type is accounted for?
@@ -48,8 +38,6 @@ TODO
 -- 6b. Split again by puzzle-type, then re-run
 7. Can we predict metadata based on data? Train linear regression models on the View data, for either expertise or Best score. How accurate is the model? What weight parameters are learned?
 
-OPTIONAL TODO
-1. (Efficiency) Create a new column for is_highscore, default -1 (unknown). When calculating highscore, check if known and simply use that value. Else calculate and set to 1 (true) or 0 (false).
 
 ---- COLUMN INFO ----
 
