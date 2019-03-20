@@ -54,6 +54,7 @@ EXPERTS = []
 # For these options, there is a lot of missing data - replace missing with default value
 MISSING_DEFAULTS = {
 	"puzzle_dialog__show_beginner" : 0,
+	"rank_popups": 1,
 	"selection_mode": 0,
 	"selection_mode__show_notes": 1,
 	"tooltips": 1,
@@ -425,9 +426,6 @@ def remove_intro_puzzle_entries():
 
 def remove_major_missing_entries():
 
-	print("Removing major missing entries...")
-	print("start: " + str(datetime.datetime.now()))
-
 	if args.debug:
 		print("DEBUG: Removing entries with major missing data...")
 
@@ -441,14 +439,8 @@ def remove_major_missing_entries():
 		if option not in MISSING_DEFAULTS.keys():
 			missing_dict[option] = 0
 
-	print("Gathering relevant options data ...")
-
 	c.execute('''select %s from options''' % query_cols)
 	results = c.fetchall()
-
-	print("completed: " + str(datetime.datetime.now()))
-
-	print("results len: " + str(len(results)))
 
 	for entry_idx in range(len(results)):
 
@@ -463,7 +455,7 @@ def remove_major_missing_entries():
 			# if we expect to have data for this option but do not
 			if o_name not in MISSING_DEFAULTS.keys():
 
-				# increment counts for missing option
+				# increment counts for missing option in missing_dict
 				if results[entry_idx][3 + o_index] is None:
 					num_major_options_missing += 1
 					missing_dict[o_name] += 1
@@ -471,36 +463,26 @@ def remove_major_missing_entries():
 		# remove entry from options table if it has any major options missing
 		if num_major_options_missing > 0:
 			missing_dict["total_entry_count"] += 1
-			# c.execute('''delete from options where uid = \"%s\" and pid == %d and time == %d''' % (uid, pid, time))
-
-	print("missing_dict[total_entry_count] = " + str(missing_dict["total_entry_count"]))
-
-	print("end: " + str(datetime.datetime.now()))
-
-	return missing_dict
+			c.execute('''delete from options where uid = \"%s\" and pid == %d and time == %d''' % (uid, pid, time))
 
 
 def replace_minor_missing_entries():
 
-	print("Replacing minor missing entries with default values...")
-	print("start: " + str(datetime.datetime.now()))
-
 	if args.debug:
 		print("DEBUG: Replacing minor missing data entries with default values...")
+
+	replacement_dict = {"total_entry_count": 0}
+
 	minor_options = MISSING_DEFAULTS.keys()
+
+	for o_name in minor_options:
+		replacement_dict[o_name] = 0
+
 	sep = ","
 	query_cols = sep.join(["uid", "pid", "time"] + minor_options)
 
-	print("Gathering relevant options data ...")
-
 	c.execute('''select %s from options''' % query_cols)
 	results = c.fetchall()
-
-	print("completed: " + str(datetime.datetime.now()))
-
-	print("results len: " + str(len(results)))
-
-	print("Updating option entries...")
 
 	num_entries_updated = 0
 
@@ -540,19 +522,19 @@ def replace_minor_missing_entries():
 def clean_db():
 	print("INFO: Cleaning database (this may take a while)...")
 	entries_removed = 0
-	entries_removed += remove_error_entries()
-	remove_invalid_puzzle_ranks() # doesn't remove any options entries
-	remove_beginner_puzzle_entries()
-	remove_intro_puzzle_entries()
-	# missing_dict = remove_major_missing_entries()
-	# entries_removed += missing_dict["total_entry_count"]
-	# print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
-	# if args.debug:
-	# 	print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
-	# 	for option in missing_dict.keys():
-	# 		if option == "total_entry_count":
-	# 			continue
-	# 		print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
+	# entries_removed += remove_error_entries()
+	# remove_invalid_puzzle_ranks() # doesn't remove any options entries
+	# remove_beginner_puzzle_entries()
+	# remove_intro_puzzle_entries()
+	missing_dict = remove_major_missing_entries()
+	entries_removed += missing_dict["total_entry_count"]
+	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
+	if args.debug:
+		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
+		for option in missing_dict.keys():
+			if option == "total_entry_count":
+				continue
+			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	# replace_minor_missing_entries()
 	# conn.commit()
 	
