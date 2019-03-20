@@ -389,6 +389,8 @@ def remove_beginner_puzzle_entries():
 	if args.debug:
 		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
 
+	return num_options_to_remove
+
 
 def remove_intro_puzzle_entries():
 
@@ -422,6 +424,8 @@ def remove_intro_puzzle_entries():
 	if args.debug:
 		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+
+	return num_options_to_remove
 
 
 def remove_major_missing_entries():
@@ -525,8 +529,8 @@ def clean_db():
 	entries_removed = 0
 	entries_removed += remove_error_entries()
 	remove_invalid_puzzle_ranks() # doesn't remove any options entries
-	remove_beginner_puzzle_entries()
-	remove_intro_puzzle_entries()
+	entries_removed += remove_beginner_puzzle_entries()
+	entries_removed += remove_intro_puzzle_entries()
 	missing_dict = remove_major_missing_entries()
 	entries_removed += missing_dict["total_entry_count"]
 	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
@@ -535,8 +539,7 @@ def clean_db():
 		for option in missing_dict.keys():
 			if option == "total_entry_count":
 				continue
-			if missing_dict[option] > 0:
-				print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
+			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
 	# replace_minor_missing_entries()
 	# conn.commit()
 	
