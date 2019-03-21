@@ -565,12 +565,14 @@ def query_to_views(where):
 	
 # convert unicode to ascii
 def unicode_clean(cluster):
+	print(cluster)
 	for i in range(len(cluster)):
 		for j in range(len(cluster[i])):
 			try:
 				cluster[i][j].encode('ascii', 'xmlcharrefreplace')
 			except: # not unicode
 				pass
+	print(cluster)
 	return cluster
 
 # Input: view dict from query_to_views
