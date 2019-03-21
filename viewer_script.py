@@ -181,7 +181,7 @@ def test(args):
 	# Tests go here
 
 	#main_stats()
-	#centroid_test()
+	centroid_test()
 
 
 
@@ -225,6 +225,7 @@ def centroid_test():
 	cluster = []
 	for (id,view) in iteritems(views):
 		cluster.append(view_dict_to_list(view))
+	unicode_clean(cluster)
 	print("cluster:")
 	print(cluster)
 	print("Density stats:")
@@ -561,6 +562,16 @@ def query_to_views(where):
 					view[opt] = 0
 			views[unique_id] = view
 	return views
+	
+# convert unicode to ascii
+def unicode_clean(cluster):
+	for i in range(len(cluster)):
+		for j in range(len(cluster[i])):
+			try:
+				cluster[i][j].encode('ascii', 'xmlcharrefreplace')
+			except: # not unicode
+				pass
+	return cluster
 
 # Input: view dict from query_to_views
 # Output: list of just the values in a sorted order to keep things consistent
