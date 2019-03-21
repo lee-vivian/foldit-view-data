@@ -3,6 +3,7 @@ from __future__ import division, print_function
 from future.utils import iteritems
 from collections import defaultdict
 
+
 # Fix for Python 2.x
 try: input = raw_input
 except NameError: pass
@@ -301,37 +302,31 @@ def get_all_entropies(output=False):
 
 # ------------ CLEAN DATABASE -----------------
 
-import datetime
 
 def remove_error_entries():
-	if args.debug:
-		print("DEBUG: Removing entries with errors...")
+	print("INFO: Removing entries with errors...")
 	c.execute("select pid from options where error == 1")
 	options_to_remove = [row[0] for row in c.fetchall()]
 	for pid in options_to_remove:
 		c.execute('''delete from options where pid == %d''' % pid)
 	num_removed = len(options_to_remove)
-	if args.debug:
-		print("DEBUG: Removed " + str(num_removed) + " entries with errors from options")
+	print("INFO: Removed " + str(num_removed) + " entries with errors from options")
 	return num_removed
 
 
 def remove_invalid_puzzle_ranks():
-	if args.debug:
-		print("DEBUG: Removing invalid puzzle rank entries...")
+	print("INFO: Removing invalid puzzle rank entries...")
 	c.execute("select pid from rprp_puzzle_ranks where is_valid == 0")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
 	for pid in ranks_to_remove:
 		c.execute('''delete from rprp_puzzle_ranks where pid == %d''' % pid)
 	num_removed = len(ranks_to_remove)
-	if args.debug:
-		print("DEBUG: Removed " + str(num_removed) +
+	print("INFO: Removed " + str(num_removed) +
 			  " entries from rprp_puzzle_ranks with invalid puzzle ranks")
 
 
 def remove_beginner_puzzle_entries():
-	if args.debug:
-		print("DEBUG: Removing Beginner entries...")
+	print("INFO: Removing Beginner entries...")
 
 	beginner_puzzles = map(int, PIDS_BY_CAT['Beginner'])
 
@@ -368,34 +363,27 @@ def remove_beginner_puzzle_entries():
 	options_to_remove_chunks = \
 		[options_to_remove[i:i + 1000] for i in range(0, len(options_to_remove), 1000)]
 
-	if args.debug:
-		print("DEBUG: Removing Beginner entries from rpnode__puzzle...")
+	print("INFO: Removing Beginner entries from rpnode__puzzle...")
 	for chunk in puzzles_to_remove_chunks:
 		c.execute('''delete from rpnode__puzzle where nid IN %s''' % str(tuple(chunk)))
-	if args.debug:
-		print("DEBUG: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
+	print("INFO: Removed " + str(num_puzzles_to_remove) + " entries from rpnode__puzzle for beginner puzzles")
 
-	if args.debug:
-		print("DEBUG: Removing Beginner entries from rprp_puzzle_ranks...")
+	print("INFO: Removing Beginner entries from rprp_puzzle_ranks...")
 	for chunk in ranks_to_remove_chunks:
 		c.execute('''delete from rprp_puzzle_ranks where pid IN % s''' % str(tuple(chunk)))
-	if args.debug:
-		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
+	print("INFO: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for beginner puzzles")
 
-	if args.debug:
-		print("DEBUG: Removing Beginner entries from options...")
+	print("INFO: Removing Beginner entries from options...")
 	for chunk in options_to_remove_chunks:
 		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
-	if args.debug:
-		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
+	print("INFO: Removed " + str(num_options_to_remove) + " entries from options for beginner puzzles")
 
 	return num_options_to_remove
 
 
 def remove_intro_puzzle_entries():
 
-	if args.debug:
-		print("DEBUG: Removing Intro entries...")
+	print("INFO: Removing Intro entries...")
 
 	c.execute("select pid from rprp_puzzle_ranks where pid not in (select nid from rpnode__puzzle)")
 	ranks_to_remove = [row[0] for row in c.fetchall()]
@@ -411,27 +399,23 @@ def remove_intro_puzzle_entries():
 	options_to_remove_chunks = \
 		[options_to_remove[i:i + 1000] for i in range(0, len(options_to_remove), 1000)]
 
-	if args.debug:
-		print("DEBUG: Removing Intro entries from rprp_puzzle_ranks...")
+	print("INFO: Removing Intro entries from rprp_puzzle_ranks...")
 	for chunk in ranks_to_remove_chunks:
 		c.execute('''delete from rprp_puzzle_ranks where pid IN %s''' % str(tuple(chunk)))
+	print("INFO: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 
-	if args.debug:
-		print("DEBUG: Removing Intro entries from options...")
+		
+	print("INFO: Removing Intro entries from options...")
 	for chunk in options_to_remove_chunks:
 		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
-
-	if args.debug:
-		print("DEBUG: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
-		print("DEBUG: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
+	print("INFO: Removed " + str(num_options_to_remove) + " entries from options for intro puzzles")
 
 	return num_options_to_remove
 
 
 def remove_major_missing_entries():
 
-	if args.debug:
-		print("DEBUG: Removing entries with major missing data...")
+	print("INFO: Removing entries with major missing data...")
 
 	all_options = BINARY_OPTIONS + CAT_OPTIONS.keys()
 	sep = ","
@@ -472,52 +456,13 @@ def remove_major_missing_entries():
 
 
 def replace_minor_missing_entries():
-
-	if args.debug:
-		print("DEBUG: Replacing minor missing data entries with default values...")
-
-	replacement_dict = {"total_entry_count": 0}
-
-	minor_options = MISSING_DEFAULTS.keys()
-
-	for o_name in minor_options:
-		replacement_dict[o_name] = 0
-
-	sep = ","
-	query_cols = sep.join(["uid", "pid", "time"] + minor_options)
-
-	c.execute('''select %s from options''' % query_cols)
-	results = c.fetchall()
-
-	num_entries_to_update = 0
-
-	for entry_idx in range(len(results)):
-
-		# names of minor options to update if they have missing values
-		options_to_update = []
-
-		# unique identifier cols for an entry
-		uid, pid, time = results[entry_idx][0:3]
-
-		# for all minor options in the entry
-		for o_index in range(len(results[entry_idx]) - 3):
-			if results[entry_idx][3 + o_index] is None:
-				o_name = minor_options[o_index]
-				options_to_update.append(o_name)
-
-		# update minor options in entry is they had missing values
-		if len(options_to_update) > 0:
-
-			num_entries_to_update += 1
-
-			# updated_options_values = [str(MISSING_DEFAULTS[o]) for o in options_to_update]
-			#
-			# update_query = ",".join(["=".join(a) for a in zip(options_to_update, updated_options_values)])
-			#
-			# c.execute('''update options set %s where uid = \"%s\" and pid == %d and time == %d'''
-			# 		  % (update_query, uid, pid, time))
-
-	print("entries to update: " + str(num_entries_to_update))
+	print("INFO: Replacing minor missing data entries with default values...")
+	for option in MISSING_DEFAULTS.keys():
+		# count / sanity check
+		c.execute('''select %s from options where %s is NULL ''' % (option, option))
+		results = c.fetchall()
+		print("Replaced " + str(len(results)) + " missing entries for " + str(option) + " with default value")
+		c.execute('''update options set %s = %d where %s is NULL ''' % (option, MISSING_DEFAULTS[option], option))
 
 
 def clean_db():
@@ -530,15 +475,14 @@ def clean_db():
 	missing_dict = remove_major_missing_entries()
 	entries_removed += missing_dict["total_entry_count"]
 	print("INFO: Removed " + str(entries_removed) + " bad entries from options table.")
-	if args.debug:
-		print("DEBUG: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
-		for option in missing_dict.keys():
-			if option == "total_entry_count":
-				continue
-			print("DEBUG: Removed " + str(missing_dict[option]) + " entries because of " + str(option))
-	# @TODO sql profling to speed up delete/update queries for remove_major and replace_minor fns
-	# replace_minor_missing_entries()
-	# conn.commit()
+	print("INFO: Removed " + str(missing_dict["total_entry_count"]) + " entries with missing options data.")
+	for option in missing_dict.keys():
+		if option == "total_entry_count":
+			continue
+		print("INFO: Found " + str(missing_dict[option]) + " entries with missing " + str(option))
+	replace_minor_missing_entries()
+	conn.commit()
+	print("INFO: Databased cleaned.")
 	
 # ------------ END CLEAN DATABASE -----------------
 
@@ -746,6 +690,7 @@ def io_mode(args):
 			print("freq [option] - count values of an option (or 'all')")
 			print("ent [option] - get entropy of option (or 'all')")
 			print("experts - count and list all experts")
+			print("clean - clean the database of bad entries")
 
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
@@ -773,6 +718,10 @@ def io_mode(args):
 				print(c.fetchall())
 			except Exception as e:
 				print("Invalid option: " + str(option))
+				
+		if command == "clean":
+			clean_db()
+
 
 		if command == "ent all":
 			get_all_entropies(output=True)
@@ -820,16 +769,23 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, numpy, sqlite3
-
+	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path
 	# import scikit, pandas, and/or oranges?
+	
 	global conn
-	conn = sqlite3.connect('folditx.db')
+	if os.path.isfile('foldit_clean.db'):
+		conn = sqlite3.connect('foldit_clean.db')
+		print("INFO: Found clean database: foldit_clean.db")
+	elif os.path.isfile('folditx.db'):
+		conn = sqlite3.connect('folditx.db')
+		print("WARN: Database is not clean. Use the --quick clean command and save database as foldit_clean.db")
+	else:
+		print("ERR: No database found with name folditx.db or foldit_clean.db")
+		exit(1)
 	global c
 	c = conn.cursor()
 	import_categories()
 	import_experts(recalculate=False)
-	clean_db()
 
 print("...Loaded.")
 
