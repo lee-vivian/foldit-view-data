@@ -221,7 +221,7 @@ def count_missing():
 
 def centroid_test():
 	# Get total centroid
-	views = query_to_views("limit 3") # whole db, TEST limit 3
+	views = query_to_views("") # whole db
 	cluster = []
 	for (id,view) in iteritems(views):
 		cluster.append(view_dict_to_list(view))
@@ -231,6 +231,7 @@ def centroid_test():
 	print("Density stats:")
 	print(density(cluster))
 	print("Centroid:")
+	print(centroid(cluster))
 	print(list_to_view_dict(centroid(cluster)))
 
 # ------------ END TEST BED -----------------------
@@ -563,16 +564,14 @@ def query_to_views(where):
 			views[unique_id] = view
 	return views
 	
-# convert unicode to ascii
+# convert unicode to ints, the hardcoded way
 def unicode_clean(cluster):
-	print(cluster)
 	for i in range(len(cluster)):
 		for j in range(len(cluster[i])):
-			try:
-				cluster[i][j].encode('ascii', 'xmlcharrefreplace')
-			except: # not unicode
-				pass
-	print(cluster)
+			if cluster[i][j] == u'0':
+				cluster[i][j] = 0
+			elif cluster[i][j] == u'1':
+				cluster[i][j] = 1
 	return cluster
 
 # Input: view dict from query_to_views
@@ -657,7 +656,6 @@ def density(cluster, dims=[-1]):
 							d_i.append(cluster[i][d])
 							d_j.append(cluster[j][d])
 					distances.append(distance(d_i, d_j))
-
 	mean = numpy.mean(distances)
 	std = numpy.std(distances)
 	return mean,std
@@ -666,9 +664,10 @@ def density(cluster, dims=[-1]):
 # returns the centroid of a cluster
 # if dims option is set, calculates for only specific dimension(s)
 def centroid(clus, dims=[-1]):
+	cluster = clus
 	if dims != [-1]:
-		cluster = numpy.delete(clus, dims, axis=1)
-	return numpy.mean(cluster)
+		cluster = numpy.delete(cluster, dims, axis=1)
+	return numpy.mean(cluster, axis=0).tolist()
 
 
 # returns the entropy for a binary var
