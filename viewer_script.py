@@ -548,6 +548,18 @@ def query_to_views(where):
 			#	print(bin_opt)
 			view[bin_opt] = result[3]
 			views[unique_id] = view
+
+	# add CAT options to views dict
+	views = query_cat_to_views(where, views)
+
+	return views
+
+
+# Input: string of where queries for options table (e.g. "where uid=... and pid=....") and
+#        a view dict of bools for options, sorted by key {unique_id : {option : bool}}
+# For each result, add to the given view dict of bools each categorical option, sorted by key
+# Output: updated dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
+def query_cat_to_views(where, views):
 	for cat_opt in CAT_OPTIONS.keys():
 		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
 		results = c.fetchall()
@@ -563,7 +575,8 @@ def query_to_views(where):
 					view[opt] = 0
 			views[unique_id] = view
 	return views
-	
+
+
 # convert unicode to ints, the hardcoded way
 def unicode_clean(cluster):
 	for i in range(len(cluster)):
