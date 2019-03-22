@@ -285,6 +285,8 @@ def get_all_experts():
 		writer.writerows(sorted_experts)
 
 def get_all_entropies(output=False):
+	if not is_db_clean:
+		raise Exception("Database must be clean to run get_all_entropies")
 	global ENTROPY_DICT
 	ENTROPY_DICT = defaultdict(float)
 	for o in BINARY_OPTIONS:
@@ -292,15 +294,16 @@ def get_all_entropies(output=False):
 			c.execute(FREQ_COUNT_QUERY % (o,o,o))
 			results = c.fetchall()
 			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
-			count_0 = results[1][1]
-			count_1 = results[2][1]
+			count_0 = results[0][1]
+			count_1 = results[1][1]
 			ENTROPY_DICT[o] = entropy(count_0, count_1)
 		except Exception as e:
+			print(e)
 			print("Invalid option: " + str(o))
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
-			print(option + ": " + str(en))
+			print(option + "," + str(en))
 
 # ------------ CLEAN DATABASE -----------------
 
@@ -630,8 +633,8 @@ def distance(view1, view2):
 
 
 # TODO
-# Input: a full vector of view data that can correspond somehow to known values of entropy for each attr
-# Output: the vector of data, elementwise multiplied by (1-entropy)
+# Input: a View dict
+# Output: the View Dict, elementwise multiplied by (1-entropy)
 def apply_inverse_entropy_weighting(view):
 	pass
 
@@ -738,13 +741,15 @@ def io_mode(args):
 		if command == "ent all":
 			get_all_entropies(output=True)
 		elif command.startswith("ent "):
+			if not is_db_clean:
+				raise Exception("Database must be clean to get entropies")
 			option = command[4:]
 			try:
 				c.execute(FREQ_COUNT_QUERY % (option,option,option))
 				results = c.fetchall()
 				# note that it returns (None,0) as result 0, I don't know why
-				count_0 = results[1][1]
-				count_1 = results[2][1]
+				count_0 = results[0][1]
+				count_1 = results[1][1]
 				print(entropy(count_0, count_1))
 			except Exception as e:
 				print("Invalid option: " + str(option))
@@ -784,9 +789,11 @@ if __name__ == "__main__":
 	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path
 	# import scikit, pandas, and/or oranges?
 	
-	global conn
+	global conn, is_db_clean
+	is_db_clean = False
 	if os.path.isfile('foldit_clean.db'):
 		conn = sqlite3.connect('foldit_clean.db')
+		is_db_clean = True
 		print("INFO: Found clean database: foldit_clean.db")
 	elif os.path.isfile('folditx.db'):
 		conn = sqlite3.connect('folditx.db')
