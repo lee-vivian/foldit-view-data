@@ -297,6 +297,19 @@ def get_all_entropies(output=False):
 			ENTROPY_DICT[o] = entropy(count_0, count_1)
 		except Exception as e:
 			print("Invalid option: " + str(o))
+
+	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
+	# {unique id : {cat_option_val : bool}}
+	binarized_cat_options_dict = query_cat_to_dict("", {})
+	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
+	num_unique_ids = len(binarized_cat_options_dict.keys())
+	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
+
+	for v in all_cat_option_values:
+		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
+		count_0 = num_unique_ids - count_1
+		ENTROPY_DICT[v] = entropy(count_0, count_1)
+
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
@@ -550,31 +563,31 @@ def query_to_views(where):
 			views[unique_id] = view
 
 	# add CAT options to views dict
-	views = query_cat_to_views(where, views)
+	views = query_cat_to_dict(where, views)
 
 	return views
 
 
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....") and
-#        a view dict of bools for options, sorted by key {unique_id : {option : bool}}
-# For each result, add to the given view dict of bools each categorical option, sorted by key
-# Output: updated dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
-def query_cat_to_views(where, views):
+#        a dict of bools for options, sorted by key {unique_id : {option : bool}}
+# For each result, add to the given dict of bools each categorical option, sorted by key
+# Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
+def query_cat_to_dict(where, dictionary):
 	for cat_opt in CAT_OPTIONS.keys():
 		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
 		results = c.fetchall()
 		for result in results:
 			unique_id = str(result[0]) + str(result[1]) + str(result[2])
-			if unique_id not in views:
-				views[unique_id] = {}
-			view = views[unique_id]
+			if unique_id not in dictionary:
+				dictionary[unique_id] = {}
+			dict_entry = dictionary[unique_id]
 			for opt in CAT_OPTIONS[cat_opt]:
 				if opt == result[3]:
-					view[opt] = 1
+					dict_entry[opt] = 1
 				else:
-					view[opt] = 0
-			views[unique_id] = view
-	return views
+					dict_entry[opt] = 0
+			dictionary[unique_id] = dict_entry
+	return dictionary
 
 
 # convert unicode to ints, the hardcoded way
