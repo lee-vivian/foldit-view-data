@@ -1,3 +1,6 @@
+MISC
+Data was collected once per session, when the player exits
+
 RQs
 How do players look at Foldit puzzles?
 What information is valuable to players to solve a puzzle?
