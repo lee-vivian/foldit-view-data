@@ -324,6 +324,49 @@ def get_all_entropies(output=False):
 		for option, en in sorted_dict:
 			print(option + "," + str(en))
 
+
+# ------------ WRITE TO CSV FUNCTIONS -----------------
+
+# Input: a list of dictionaries of {column name : val} for each entry in the desired table
+# to create, the name of the csv file to create
+# Output: creates a csv file from the given dictionary data
+def write_csv_from_dict(dict_data, name):
+	csv_file_name = name
+	csv_columns = dict_data[0].keys()
+	try:
+		with open(csv_file_name, 'w') as csvfile:
+			writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+			writer.writeheader()
+			for data in dict_data:
+				writer.writerow(data)
+	except IOError:
+		raise Exception("I/O error")
+
+
+# Input: where query for query_to_views
+# Output: creates a csv file for the options data containing relevant columns for
+# viewing/visualization and hierarchical clustering
+def write_options_csv(where):
+
+	options_views_dicts = query_to_views(where)
+	options_csv_dict = {}
+
+	c.execute('''select uid, pid, time from options %s''' % where)
+	results = c.fetchall()
+
+	for result in results:
+		uid = result[0]
+		pid = result[1]
+		time = result[2]
+		unique_id = str(uid) + str(pid) + str(time)
+		options_csv_dict[unique_id] = {"uid": uid, "pid": pid, "time": time}
+		options_csv_dict[unique_id].update(options_views_dicts[unique_id])
+
+	dict_data = options_csv_dict.values()
+	write_csv_from_dict(dict_data, "options_view.csv")
+	print("Created options_view csv")
+
+
 # ------------ CLEAN DATABASE -----------------
 
 
@@ -790,6 +833,9 @@ def io_mode(args):
 
 		if command == "clean":
 			clean_db()
+
+		if command == "csv options":
+			write_options_csv("")
 
 		if command == "ent all":
 			get_all_entropies(output=True)
