@@ -291,28 +291,41 @@ def get_all_entropies(output=False):
 		raise Exception("Database must be clean to run get_all_entropies")
 	global ENTROPY_DICT
 	ENTROPY_DICT = defaultdict(float)
-	for o in BINARY_OPTIONS:
-		try:
-			c.execute(FREQ_COUNT_QUERY % (o,o,o))
-			results = c.fetchall()
-			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
-			count_0 = results[0][1]
-			count_1 = results[1][1]
-			ENTROPY_DICT[o] = entropy(count_0, count_1)
-		except Exception as e:
-			print(e)
-			print("Invalid option: " + str(o))
+	# for o in BINARY_OPTIONS:
+	# 	try:
+	# 		c.execute(FREQ_COUNT_QUERY % (o,o,o))
+	# 		results = c.fetchall()
+	# 		# note that it returns (None,0) as result 0, I haven't figured out how to silence that
+	# 		count_0 = results[0][1]
+	# 		count_1 = results[1][1]
+	# 		ENTROPY_DICT[o] = entropy(count_0, count_1)
+	# 	except Exception as e:
+	# 		print(e)
+	# 		print("Invalid option: " + str(o))
 
 	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
 	# {unique id : {cat_option_val : bool}}
 	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
+
 	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
+
 	num_unique_ids = len(binarized_cat_options_dict.keys())
+
 	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
 
 	for v in all_cat_option_values:
 		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
 		count_0 = num_unique_ids - count_1
+
+		if count_1 + count_0 != num_unique_ids:
+			print(str(v) + " error: sum not equal to num entries")
+
+		if count_1 == 0:
+			print(str(v) + " error: no 1 entries")
+
+		if count_0 == 0:
+			print(str(v) + " error: no 0 entries")
+
 		ENTROPY_DICT[v] = entropy(count_0, count_1)
 
 	if output:
@@ -578,6 +591,7 @@ def query_to_views(where):
 # For each result, add to the given dict of bools each categorical option, sorted by key
 # Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
 def query_binarize_cat_to_dict(where, dictionary):
+
 	for cat_opt in CAT_OPTIONS.keys():
 		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
 		results = c.fetchall()
@@ -592,6 +606,7 @@ def query_binarize_cat_to_dict(where, dictionary):
 				else:
 					dict_entry[opt] = 0
 			dictionary[unique_id] = dict_entry
+
 	return dictionary
 
 
@@ -719,6 +734,10 @@ def centroid(clus, dims=[-1]):
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
 	p = count_1 / (count_0 + count_1)
+
+	if count_0 == 0 or count_1 == 0:
+		print(p)
+
 	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
 
 # -------- END VIEW-BASED CALCULATIONS -------------
