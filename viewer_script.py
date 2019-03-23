@@ -300,7 +300,7 @@ def get_all_entropies(output=False):
 
 	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
 	# {unique id : {cat_option_val : bool}}
-	binarized_cat_options_dict = query_cat_to_dict("", {})
+	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
 	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
 	num_unique_ids = len(binarized_cat_options_dict.keys())
 	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
@@ -563,7 +563,7 @@ def query_to_views(where):
 			views[unique_id] = view
 
 	# add CAT options to views dict
-	views = query_cat_to_dict(where, views)
+	views = query_binarize_cat_to_dict(where, views)
 
 	return views
 
@@ -572,7 +572,7 @@ def query_to_views(where):
 #        a dict of bools for options, sorted by key {unique_id : {option : bool}}
 # For each result, add to the given dict of bools each categorical option, sorted by key
 # Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
-def query_cat_to_dict(where, dictionary):
+def query_binarize_cat_to_dict(where, dictionary):
 	for cat_opt in CAT_OPTIONS.keys():
 		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
 		results = c.fetchall()
