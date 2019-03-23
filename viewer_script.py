@@ -8,7 +8,7 @@ from collections import defaultdict
 try: input = raw_input
 except NameError: pass
 
-ENTROPIES_FILE = "binary_entropies.csv" # TODO, after get_all_entropies handles CAT options, should just be entropies.csv
+ENTROPIES_FILE = "entropies.csv"
 
 """
 VIEW (conceptual struct):
@@ -302,10 +302,70 @@ def get_all_entropies(output=False):
 		except Exception as e:
 			print(e)
 			print("Invalid option: " + str(o))
+
+	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
+	# {unique id : {cat_option_val : bool}}
+	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
+
+	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
+
+	num_unique_ids = len(binarized_cat_options_dict.keys())
+
+	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
+
+	for v in all_cat_option_values:
+		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
+		count_0 = num_unique_ids - count_1
+
+		ENTROPY_DICT[v] = entropy(count_0, count_1)
+
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
 			print(option + "," + str(en))
+
+
+# ------------ WRITE TO CSV FUNCTIONS -----------------
+
+# Input: a list of dictionaries of {column name : val} for each entry in the desired table
+# to create, the name of the csv file to create
+# Output: creates a csv file from the given dictionary data
+def write_csv_from_dict(dict_data, name):
+	csv_file_name = name
+	csv_columns = dict_data[0].keys()
+	try:
+		with open(csv_file_name, 'w') as csvfile:
+			writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+			writer.writeheader()
+			for data in dict_data:
+				writer.writerow(data)
+	except IOError:
+		raise Exception("I/O error")
+
+
+# Input: where query for query_to_views
+# Output: creates a csv file for the options data containing relevant columns for
+# viewing/visualization and hierarchical clustering
+def write_options_csv(where):
+
+	options_views_dicts = query_to_views(where)
+	options_csv_dict = {}
+
+	c.execute('''select uid, pid, time from options %s''' % where)
+	results = c.fetchall()
+
+	for result in results:
+		uid = result[0]
+		pid = result[1]
+		time = result[2]
+		unique_id = str(uid) + str(pid) + str(time)
+		options_csv_dict[unique_id] = {"uid": uid, "pid": pid, "time": time}
+		options_csv_dict[unique_id].update(options_views_dicts[unique_id])
+
+	dict_data = options_csv_dict.values()
+	write_csv_from_dict(dict_data, "options_view.csv")
+	print("Created options_view csv")
+
 
 # ------------ CLEAN DATABASE -----------------
 
@@ -411,7 +471,7 @@ def remove_intro_puzzle_entries():
 		c.execute('''delete from rprp_puzzle_ranks where pid IN %s''' % str(tuple(chunk)))
 	print("INFO: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 
-		
+
 	print("INFO: Removing Intro entries from options...")
 	for chunk in options_to_remove_chunks:
 		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
@@ -490,7 +550,7 @@ def clean_db():
 	replace_minor_missing_entries()
 	conn.commit()
 	print("INFO: Databased cleaned.")
-	
+
 # ------------ END CLEAN DATABASE -----------------
 
 def import_categories():
@@ -553,22 +613,37 @@ def query_to_views(where):
 			#	print(bin_opt)
 			view[bin_opt] = result[3]
 			views[unique_id] = view
+
+	# add CAT options to views dict
+	views = query_binarize_cat_to_dict(where, views)
+
+	return views
+
+
+# Input: string of where queries for options table (e.g. "where uid=... and pid=....") and
+#        a dict of bools for options, sorted by key {unique_id : {option : bool}}
+# For each result, add to the given dict of bools each categorical option, sorted by key
+# Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
+def query_binarize_cat_to_dict(where, dictionary):
+
 	for cat_opt in CAT_OPTIONS.keys():
 		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
 		results = c.fetchall()
 		for result in results:
 			unique_id = str(result[0]) + str(result[1]) + str(result[2])
-			if unique_id not in views:
-				views[unique_id] = {}
-			view = views[unique_id]
+			if unique_id not in dictionary:
+				dictionary[unique_id] = {}
+			dict_entry = dictionary[unique_id]
 			for opt in CAT_OPTIONS[cat_opt]:
 				if opt == result[3]:
-					view[opt] = 1
+					dict_entry[opt] = 1
 				else:
-					view[opt] = 0
-			views[unique_id] = view
-	return views
-	
+					dict_entry[opt] = 0
+			dictionary[unique_id] = dict_entry
+
+	return dictionary
+
+
 # convert unicode to ints, the hardcoded way
 def unicode_clean(cluster):
 	for i in range(len(cluster)):
@@ -693,6 +768,11 @@ def centroid(clus, dims=[-1]):
 # returns the entropy for a binary var
 def entropy(count_0, count_1):
 	p = count_1 / (count_0 + count_1)
+
+	# math.log(0,2) will raise a value error, taken to be 0.0 instead
+	if p == 0.0 or p == 1.0:
+		return 0.0
+
 	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
 
 # -------- END VIEW-BASED CALCULATIONS -------------
@@ -750,10 +830,12 @@ def io_mode(args):
 				print(c.fetchall())
 			except Exception as e:
 				print("Invalid option: " + str(option))
-				
+
 		if command == "clean":
 			clean_db()
 
+		if command == "csv options":
+			write_options_csv("")
 
 		if command == "ent all":
 			get_all_entropies(output=True)
@@ -805,7 +887,7 @@ if __name__ == "__main__":
 	print("Loading modules and data...")
 	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path
 	# import scikit, pandas, and/or oranges?
-	
+
 	global conn, is_db_clean
 	is_db_clean = False
 	if os.path.isfile('foldit_clean.db'):
