@@ -8,7 +8,7 @@ from collections import defaultdict
 try: input = raw_input
 except NameError: pass
 
-ENTROPIES_FILE = "binary_entropies.csv" # TODO, after get_all_entropies handles CAT options, should just be entropies.csv
+ENTROPIES_FILE = "entropies.csv"
 
 """
 VIEW (conceptual struct):
