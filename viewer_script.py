@@ -291,17 +291,17 @@ def get_all_entropies(output=False):
 		raise Exception("Database must be clean to run get_all_entropies")
 	global ENTROPY_DICT
 	ENTROPY_DICT = defaultdict(float)
-	# for o in BINARY_OPTIONS:
-	# 	try:
-	# 		c.execute(FREQ_COUNT_QUERY % (o,o,o))
-	# 		results = c.fetchall()
-	# 		# note that it returns (None,0) as result 0, I haven't figured out how to silence that
-	# 		count_0 = results[0][1]
-	# 		count_1 = results[1][1]
-	# 		ENTROPY_DICT[o] = entropy(count_0, count_1)
-	# 	except Exception as e:
-	# 		print(e)
-	# 		print("Invalid option: " + str(o))
+	for o in BINARY_OPTIONS:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			results = c.fetchall()
+			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
+			count_0 = results[0][1]
+			count_1 = results[1][1]
+			ENTROPY_DICT[o] = entropy(count_0, count_1)
+		except Exception as e:
+			print(e)
+			print("Invalid option: " + str(o))
 
 	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
 	# {unique id : {cat_option_val : bool}}
@@ -316,15 +316,6 @@ def get_all_entropies(output=False):
 	for v in all_cat_option_values:
 		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
 		count_0 = num_unique_ids - count_1
-
-		if count_1 + count_0 != num_unique_ids:
-			print(str(v) + " error: sum not equal to num entries")
-
-		if count_1 == 0:
-			print(str(v) + " error: no 1 entries")
-
-		if count_0 == 0:
-			print(str(v) + " error: no 0 entries")
 
 		ENTROPY_DICT[v] = entropy(count_0, count_1)
 
@@ -437,7 +428,7 @@ def remove_intro_puzzle_entries():
 		c.execute('''delete from rprp_puzzle_ranks where pid IN %s''' % str(tuple(chunk)))
 	print("INFO: Removed " + str(num_ranks_to_remove) + " entries from rprp_puzzle_ranks for intro puzzles")
 
-		
+
 	print("INFO: Removing Intro entries from options...")
 	for chunk in options_to_remove_chunks:
 		c.execute('''delete from options where pid IN %s''' % str(tuple(chunk)))
@@ -516,7 +507,7 @@ def clean_db():
 	replace_minor_missing_entries()
 	conn.commit()
 	print("INFO: Databased cleaned.")
-	
+
 # ------------ END CLEAN DATABASE -----------------
 
 def import_categories():
@@ -735,8 +726,9 @@ def centroid(clus, dims=[-1]):
 def entropy(count_0, count_1):
 	p = count_1 / (count_0 + count_1)
 
-	if count_0 == 0 or count_1 == 0:
-		print(p)
+	# math.log(0,2) will raise a value error, taken to be 0.0 instead
+	if p == 0.0 or p == 1.0:
+		return 0.0
 
 	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
 
@@ -795,10 +787,9 @@ def io_mode(args):
 				print(c.fetchall())
 			except Exception as e:
 				print("Invalid option: " + str(option))
-				
+
 		if command == "clean":
 			clean_db()
-
 
 		if command == "ent all":
 			get_all_entropies(output=True)
@@ -850,7 +841,7 @@ if __name__ == "__main__":
 	print("Loading modules and data...")
 	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path
 	# import scikit, pandas, and/or oranges?
-	
+
 	global conn, is_db_clean
 	is_db_clean = False
 	if os.path.isfile('foldit_clean.db'):
