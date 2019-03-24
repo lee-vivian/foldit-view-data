@@ -9,6 +9,8 @@ try: input = raw_input
 except NameError: pass
 
 ENTROPIES_FILE = "entropies.csv"
+MIN_HIGHSCORES_PER_EXPERT = 2
+
 
 """
 VIEW (conceptual struct):
@@ -48,7 +50,6 @@ Convert unicode back into normal string:
 
 """
 
-MIN_HIGHSCORES_PER_EXPERT = 2
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
 ENTROPY_DICT = {}
@@ -221,7 +222,7 @@ def count_missing():
 		views = query_to_views("limit 2000 offset " + str(rows_counted)) # whole db, iteratively
 
 
-def centroid_test():
+def centroid_tests():
 	# Get total centroid
 	views = query_to_views("") # whole db
 	cluster = []
@@ -274,7 +275,7 @@ def get_all_experts():
 	expert_dict = {}
 	for user in users:
 		user_count += 1
-		num_hs = is_expert(user)
+		num_hs = count_expertise(user)
 		if num_hs >= MIN_HIGHSCORES_PER_EXPERT:
 			expert_dict[user[0]] = num_hs
 			print('!',end='')
@@ -330,9 +331,9 @@ def add_is_highscore_col():
 
 	try:
 		c.execute("ALTER TABLE rprp_puzzle_ranks ADD is_highscore INT DEFAULT -1 NOT NULL")
-		print("Created is_highscore column in rprp_puzzle_ranks. Calculating is_highscore ...")
+		print("INFO: Created is_highscore column in rprp_puzzle_ranks. Calculating is_highscore ...")
 	except Exception as e:
-		print("is_highscore column already exists in rprp_puzzle_ranks. Recalculating is_highscore...")
+		print("INFO: is_highscore column already exists in rprp_puzzle_ranks. Recalculating is_highscore...")
 
 	# dictionary that maps pid to score at the 95th percentile for the puzzle
 	pid_highscore = {}
@@ -624,7 +625,6 @@ def import_experts(recalculate=False):
 
 # -------- VIEW-BASED CALCULATIONS ----------------
 
-# TODO how to deal with None data?
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....")
 # For each result, create a view dict of bools representing each option, sorted by key
 # Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
@@ -728,16 +728,25 @@ def get_highscore(pid):
 
 
 # Returns number of high scores in puzzles
-def is_expert(uid):
+def count_expertise(uid):
 	# get list of their best scores for each puzzle
 	# count is_highscore
-	c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
+	has_hs_column = True
+	try:
+		c.execute('''select pid, best_score, is_highscore from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
+	except:
+		print("WARN: no is_highscore column available")
+		has_hs_column = False
+		c.execute('''select pid, best_score from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
 	results = c.fetchall()
 	num_highscores = 0
 	for result in results:
-		if is_highscore(result[0], result[1]):
+		if has_hs_column:
+			if result[2] == 1:
+				num_highscores += 1
+		elif is_highscore(result[0], result[1]):
 			num_highscores += 1
-	return num_highscores # TODO change to bool
+	return num_highscores
 
 
 # calculates the similarity between two views - Euclidean distance
@@ -841,6 +850,7 @@ def io_mode(args):
 			print("ent [option] - get entropy of option (or 'all')")
 			print("experts - count and list all experts")
 			print("clean - clean the database of bad entries")
+			print("process - add new data to database, e.g. highscore info")
 
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
@@ -902,7 +912,8 @@ def io_mode(args):
 				print("ERR: unable to perform operation")
 				print("INFO: " + str(e))
 
-		if command == "highscore":
+		if command == "process":
+			print("INFO: Processing data:")
 			add_is_highscore_col()
 
 		if not single_query:

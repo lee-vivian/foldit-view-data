@@ -1,38 +1,22 @@
-Loading modules and data...
-INFO: Found clean database: foldit_clean.db
-Imported 15 puzzle categories.
-    category: 1 puzzles
-    INFO: Dropping category (too few puzzles)
-    Kinect: 1 puzzles
-    INFO: Dropping Kinect (too few puzzles)
-    Beginner: 387 puzzles
-    Symmetry: 102 puzzles
-    Predicted Contacts: 38 puzzles
-    Electron Density: 72 puzzles
-    Overall: 1234 puzzles
-    Prediction: 876 puzzles
-    CASP10: 59 puzzles
-    CASP11: 74 puzzles
-    Design: 351 puzzles
-    CASP ROLL: 29 puzzles
-    Small Molecule Design: 18 puzzles
-    Hand-Folding: 32 puzzles
-    Pilot: 16 puzzles
-Imported 11857 experts.
-...Loaded.
 view_options__show_clashes,0.999709762911
 view_options__working_pulse_style,0.972146811685
 sound,0.967276137193
 view_options__show_hbonds,0.966566754674
+Don't Show (Fast),0.965172495449
 view_options__show_sidechains_with_issues,0.953053931291
+Show All (Slow),0.945405681075
 view_options__dark_background,0.932552000655
 view_options__show_bondable_atoms,0.915674306223
 music,0.906174436289
+Cartoon,0.893518007022
 view_options__show_sidechain_hbonds,0.890859365961
 advanced_mode,0.866567068261
 view_options__relative_score_coloring,0.844704268789
 view_options__show_issues,0.831078896245
 view_options__show_voids,0.827714093912
+Score/Hydro,0.810839345442
+Show Stubs,0.805036666974
+Cartoon Thin,0.783216913586
 view_options__show_non_protein_hbonds,0.772888279178
 view_options__show_other_hbonds,0.769086626788
 view_options__show_helix_hbonds,0.765079884127
@@ -42,14 +26,36 @@ electron_density_panel__backface_culling,0.655488864968
 selection_mode,0.551654348612
 selection_mode__show_notes,0.514123711814
 view_options__show_backbone_issues,0.470655322042
+Score/Hydro+CPK,0.460485379707
 tooltips,0.438291782761
 puzzle_dialog__show_beginner,0.39786244906
 view_options__show_outlines,0.390931094051
+Score,0.356437382411
+Line,0.311027846853
 view_options__show_residue_burial,0.241262069024
 puzzle_dialog__show_old,0.217952767544
+Hydro,0.214657559768
+Rainbow,0.193681030849
 rank_popups,0.135110341146
 switch_residue_colors,0.113507267086
 view_options__sym_chain_colors,0.113470870308
+Trace Line,0.094862457612
 switch_middle_right_click,0.0938124373345
 view_options__show_buried_polars,0.088498519288
+Hydro/Score+CPK,0.0463124949268
+EnzDes,0.0433327745336
+Hydro/Score,0.0422720589028
+AAColor,0.0407802059932
+Line+H,0.0364239169907
+Stick,0.0184354399159
+CPK,0.0172271569741
+Trace Tube,0.0149932102213
+Stick+polarH,0.0117261951366
+Line+polarH,0.00731578803081
+AbegoColor,0.00602565308703
 view_options__show_contact_map_geoms,0.00573603359075
+Stick+H,0.00361534944887
+Sphere,0.00327895355343
+Cartoon Ligand,0.00140290090741
+Ligand Specific,7.80594173335e-05
+Hydrophobic,0.0
