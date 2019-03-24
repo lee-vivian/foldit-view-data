@@ -325,6 +325,35 @@ def get_all_entropies(output=False):
 			print(option + "," + str(en))
 
 
+# Add is_highscore col to rprp_puzzle_ranks table
+def add_is_highscore_col():
+
+	try:
+		c.execute("ALTER TABLE rprp_puzzle_ranks ADD is_highscore INT DEFAULT -1 NOT NULL")
+		print("Created is_highscore column in rprp_puzzle_ranks. Calculating is_highscore ...")
+	except Exception as e:
+		print("is_highscore column already exists in rprp_puzzle_ranks. Recalculating is_highscore...")
+
+	# dictionary that maps pid to score at the 95th percentile for the puzzle
+	pid_highscore = {}
+
+	c.execute('''select distinct pid from rprp_puzzle_ranks''')
+	results = c.fetchall()
+	puzzle_ids = [result[0] for result in results]
+
+	for pid in puzzle_ids:
+		pid_highscore[pid] = get_highscore(pid)
+
+	for pid in pid_highscore.keys():
+		highscore = pid_highscore[pid]
+		c.execute('''update rprp_puzzle_ranks set is_highscore = 0 where pid == %d and best_score > %d'''
+				  % (pid, highscore))
+		c.execute('''update rprp_puzzle_ranks set is_highscore = 1 where pid == %d and best_score <= %d'''
+				  % (pid, highscore))
+
+	conn.commit()
+
+
 # ------------ WRITE TO CSV FUNCTIONS -----------------
 
 # Input: a list of dictionaries of {column name : val} for each entry in the desired table
@@ -681,13 +710,22 @@ def list_to_view_dict(list):
 
 # Returns true iff score is <= 5% of best scores for this puzzle
 def is_highscore(pid, score):
-	c.execute('''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
-	# count entries, get the entry that's exactly 95th percentile, check our score vs that
+	# get the score of the entry that's exactly 95th percentile, check our score vs that
+	min_score = get_highscore(pid)
+	return score <= min_score
+
+
+# Returns score threshold for pid to be in top 5% of best scores for the puzzle
+def get_highscore(pid):
+	c.execute(
+		'''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
+	# count entries, get the entry that's exactly 95th percentile
 	results = c.fetchall()
 	num_scores = len(results)
-	index = min(int(math.ceil(num_scores*0.05)), len(results)-1) # prevent index out of range error
+	index = min(int(math.ceil(num_scores * 0.05)), len(results) - 1)  # prevent index out of range error
 	min_score = results[index][1]
-	return score <= min_score
+	return min_score
+
 
 # Returns number of high scores in puzzles
 def is_expert(uid):
@@ -863,6 +901,9 @@ def io_mode(args):
 			except sqlite3.OperationalError as e:
 				print("ERR: unable to perform operation")
 				print("INFO: " + str(e))
+
+		if command == "highscore":
+			add_is_highscore_col()
 
 		if not single_query:
 			print("Enter command (h for help): ")
