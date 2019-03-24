@@ -184,8 +184,9 @@ def test(args):
 	# Tests go here
 
 	#main_stats()
-	centroid_test()
-
+	centroid_stats("")
+	centroid_stats("where is_highscore == 1")
+	centroid_stats("where is_highscore == 0")
 
 
 	print("Done.")
@@ -222,20 +223,19 @@ def count_missing():
 		views = query_to_views("limit 2000 offset " + str(rows_counted)) # whole db, iteratively
 
 
-def centroid_tests():
+# Report stats for a centroid described by a where query
+def centroid_stats(where):
 	# Get total centroid
-	views = query_to_views("") # whole db
+	views = query_to_views(where)
 	cluster = []
 	for (id,view) in iteritems(views):
 		cluster.append(view_dict_to_list(view))
 	unicode_clean(cluster)
-	print("cluster:")
-	print(cluster)
-	print("Density stats:")
+	print("Analyzing this centroid: " + where)
+	print("Density:")
 	print(density(cluster))
 	print("Centroid:")
 	print(centroid(cluster))
-	print(list_to_view_dict(centroid(cluster)))
 
 # ------------ END TEST BED -----------------------
 
