@@ -377,6 +377,8 @@ def write_csv_from_dict(dict_data, name):
 # Output: creates a csv file for the options data containing relevant columns for
 # viewing/visualization and hierarchical clustering
 def write_options_csv(where):
+	test_write_options_csv(where) # TEST
+	return
 
 	options_views_dicts = query_to_views(where)
 	options_csv_dict = {}
@@ -395,6 +397,22 @@ def write_options_csv(where):
 	dict_data = options_csv_dict.values()
 	write_csv_from_dict(dict_data, "options_view.csv")
 	print("Created options_view csv")
+	
+def test_write_options_csv(where):
+	#cat_opts = []
+	#for cat in CAT_OPTIONS.keys():
+	#	for o in CAT_OPTIONS[cat]
+	#		cat_opts.append(o)
+	options_list = ','.join(BINARY_OPTIONS) # + cat_opts)
+	print("Options list test: " + options_list)
+	c.execute('''select %s from options''' % options_list)
+	results = c.fetchall()
+	with open('test_csv.csv', 'w') as testfile:
+		writer = csv.writer(testfile)
+		writer.writerow(BINARY_OPTIONS)
+		for r in results:
+			writer.writerow(r)
+	
 
 
 # ------------ CLEAN DATABASE -----------------
@@ -851,6 +869,7 @@ def io_mode(args):
 			print("experts - count and list all experts")
 			print("clean - clean the database of bad entries")
 			print("process - add new data to database, e.g. highscore info")
+			print("csv options - write options table to csv")
 
 		if command == 't':
 			c.execute('''SELECT name from sqlite_master where type = 'table'; ''')
