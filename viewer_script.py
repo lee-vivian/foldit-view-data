@@ -184,9 +184,9 @@ def test(args):
 	# Tests go here
 
 	#main_stats()
-	centroid_stats("")
-	centroid_stats("where is_highscore == 1")
-	centroid_stats("where is_highscore == 0")
+	centroid_stats("limit 1000")
+	#centroid_stats("where is_highscore == 1")
+	#centroid_stats("where is_highscore == 0")
 
 
 	print("Done.")
@@ -956,7 +956,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path
+	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path, cProfile, pstats, StringIO
 	# import scikit, pandas, and/or oranges?
 
 	global conn, is_db_clean
@@ -977,6 +977,17 @@ if __name__ == "__main__":
 	import_experts(recalculate=False)
 
 print("...Loaded.")
+
+# TEST
+pr = cProfile.Profile()
+pr.enable()
+test(args)
+pr.disable()
+s = StringIO.StringIO()
+sortby = 'cumulative'
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+print(s.getvalue())
 
 if args.test:
 	test(args)
