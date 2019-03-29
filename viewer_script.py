@@ -799,26 +799,32 @@ def apply_inverse_entropy_weighting(view):
 # returns mean and std
 # if dims option is set, calculates density only for specific dimension(s)
 # O(n^2) algorithm
+
+#def density(cluster, dims=[-1]):
+#	distances = []
+#	for i in range(len(cluster)):
+#		for j in range(len(cluster)):
+#			if i != j:
+#				if dims == [-1]:
+#					distances.append(distance(cluster[i], cluster[j]))
+#				else:
+#					d_i = []
+#					d_j = []
+#					for d in dims:
+#						if d > len(cluster[0])-1 or d < 0:
+#							raise IndexError("Tried to calculate density of a cluster on an invalid dimension")
+#						else:
+#							d_i.append(cluster[i][d])
+#							d_j.append(cluster[j][d])
+#					distances.append(distance(d_i, d_j))
+#	mean = numpy.mean(distances)
+#	std = numpy.std(distances)
+#	return mean,std
+
 def density(cluster, dims=[-1]):
-	distances = []
-	for i in range(len(cluster)):
-		for j in range(len(cluster)):
-			if i != j:
-				if dims == [-1]:
-					distances.append(distance(cluster[i], cluster[j]))
-				else:
-					d_i = []
-					d_j = []
-					for d in dims:
-						if d > len(cluster[0])-1 or d < 0:
-							raise IndexError("Tried to calculate density of a cluster on an invalid dimension")
-						else:
-							d_i.append(cluster[i][d])
-							d_j.append(cluster[j][d])
-					distances.append(distance(d_i, d_j))
-	mean = numpy.mean(distances)
-	std = numpy.std(distances)
-	return mean,std
+	pass
+	
+
 
 # TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
 # returns the centroid of a cluster
