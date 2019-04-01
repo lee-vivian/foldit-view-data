@@ -801,7 +801,6 @@ def distance(view1, view2):
 # Input: a View dict
 # Output: the View Dict, elementwise multiplied by (1-frequency)
 def apply_inverse_frequency_weighting(view):
-
 	if not os.path.isfile(FREQUENCIES_FILE):
 		raise Exception("ERR: Frequency file not found: " + FREQUENCIES_FILE)
 	freq_dict = {}
@@ -1017,15 +1016,15 @@ if __name__ == "__main__":
 print("...Loaded.")
 
 # TEST
-pr = cProfile.Profile()
-pr.enable()
-test(args)
-pr.disable()
-s = StringIO.StringIO()
-sortby = 'cumulative'
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-print(s.getvalue())
+# pr = cProfile.Profile()
+# pr.enable()
+# test(args)
+# pr.disable()
+# s = StringIO.StringIO()
+# sortby = 'cumulative'
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# print(s.getvalue())
 
 if args.test:
 	test(args)
