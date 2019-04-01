@@ -10,6 +10,7 @@ except NameError: pass
 
 ENTROPIES_FILE = "entropies.csv"
 FREQUENCIES_FILE = "frequencies.csv"
+EXPERTS_FILE = "experts.csv"
 MIN_HIGHSCORES_PER_EXPERT = 2
 
 
@@ -382,6 +383,26 @@ def add_is_highscore_col():
 		c.execute('''update rprp_puzzle_ranks set is_highscore = 1 where pid == %d and best_score <= %d'''
 				  % (pid, highscore))
 
+	conn.commit()
+
+
+# Add is_expert col to rprp_puzzle_ranks table
+def add_is_expert_col():
+	try:
+		c.execute("ALTER TABLE rprp_puzzle_ranks ADD is_expert INT DEFAULT 0 NOT NULL")
+		print("INFO: Created is_expert column in rprp_puzzle_ranks. Calculating is_expert ...")
+	except Exception as e:
+		print("INFO: is_expert column already exists in rprp_puzzle_ranks. Recalculating is_expert...")
+
+	# Get list of experts
+	if not os.path.isfile(EXPERTS_FILE):
+		raise Exception("ERR: Experts file not found: " + EXPERTS_FILE)
+	experts_list = []
+	with open(EXPERTS_FILE, 'r') as experts_file:
+		reader = csv.reader(experts_file)
+		for row in reader:
+			experts_list.append(row[0])
+	c.execute('''update rprp_puzzle_ranks set is_expert = 1 where uid in %s''' % str(tuple(experts_list)))
 	conn.commit()
 
 
@@ -912,7 +933,7 @@ def io_mode(args):
 			print("ent [option] - get entropy of option (or 'all')")
 			print("experts - count and list all experts")
 			print("clean - clean the database of bad entries")
-			print("process - add new data to database, e.g. highscore info")
+			print("process - add new data to database, e.g. highscore info, is expert info")
 			print("csv options - write options table to csv")
 
 		if command == 't':
@@ -980,6 +1001,7 @@ def io_mode(args):
 		if command == "process":
 			print("INFO: Processing data:")
 			add_is_highscore_col()
+			add_is_expert_col()
 
 		if not single_query:
 			print("Enter command (h for help): ")
