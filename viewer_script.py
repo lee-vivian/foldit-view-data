@@ -926,6 +926,8 @@ def io_mode(args):
 
 		if command == "freq all":
 			freq_all()
+		elif command == "binarized freq all":
+			get_all_freq_binarized_options(output=True)
 		elif command.startswith("freq "):
 			option = command[5:]
 			try:
