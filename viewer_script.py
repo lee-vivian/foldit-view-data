@@ -9,6 +9,7 @@ try: input = raw_input
 except NameError: pass
 
 ENTROPIES_FILE = "entropies.csv"
+FREQUENCIES_FILE = "frequencies.csv"
 MIN_HIGHSCORES_PER_EXPERT = 2
 
 
@@ -53,6 +54,7 @@ Convert unicode back into normal string:
 FREQ_COUNT_QUERY = '''select %s, count(%s) from options group by %s;'''
 PIDS_BY_CAT = {}
 ENTROPY_DICT = {}
+OPT_FREQ_DICT = {}
 EXPERTS = []
 
 # For these options, there is a lot of missing data - replace missing with default value
@@ -237,6 +239,7 @@ def centroid_stats(where):
 	print("Centroid:")
 	print(centroid(cluster))
 
+
 # ------------ END TEST BED -----------------------
 
 
@@ -265,6 +268,39 @@ def freq_all():
 		except Exception as e:
 			print("Invalid option: " + str(o))
 
+
+def update_dictionary_apply_fn_options_freq(dictionary, fn):
+
+	for o in BINARY_OPTIONS:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			results = c.fetchall()
+			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
+			count_0 = results[0][1]
+			count_1 = results[1][1]
+			dictionary[o] = fn(count_0, count_1)
+		except Exception as e:
+			print(e)
+			print("Invalid option: " + str(o))
+
+	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
+	# {unique id : {cat_option_val : bool}}
+	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
+
+	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
+
+	num_unique_ids = len(binarized_cat_options_dict.keys())
+
+	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
+
+	for v in all_cat_option_values:
+		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
+		count_0 = num_unique_ids - count_1
+
+		dictionary[v] = fn(count_0, count_1)
+
+	return dictionary
+
 # Warning: This function takes 30+ minutes (haven't measured exactly, might be as much as 3 hours)
 def get_all_experts():
 	# get all users
@@ -287,43 +323,31 @@ def get_all_experts():
 		writer = csv.writer(expert_file)
 		writer.writerows(sorted_experts)
 
+
 def get_all_entropies(output=False):
 	if not is_db_clean:
 		raise Exception("Database must be clean to run get_all_entropies")
 	global ENTROPY_DICT
 	ENTROPY_DICT = defaultdict(float)
-	for o in BINARY_OPTIONS:
-		try:
-			c.execute(FREQ_COUNT_QUERY % (o,o,o))
-			results = c.fetchall()
-			# note that it returns (None,0) as result 0, I haven't figured out how to silence that
-			count_0 = results[0][1]
-			count_1 = results[1][1]
-			ENTROPY_DICT[o] = entropy(count_0, count_1)
-		except Exception as e:
-			print(e)
-			print("Invalid option: " + str(o))
 
-	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
-	# {unique id : {cat_option_val : bool}}
-	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
-
-	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
-
-	num_unique_ids = len(binarized_cat_options_dict.keys())
-
-	all_cat_option_values = cat_options_dict_per_unique_id[0].keys()
-
-	for v in all_cat_option_values:
-		count_1 = sum([d[v] for d in cat_options_dict_per_unique_id])
-		count_0 = num_unique_ids - count_1
-
-		ENTROPY_DICT[v] = entropy(count_0, count_1)
+	update_dictionary_apply_fn_options_freq(ENTROPY_DICT, entropy)
 
 	if output:
 		sorted_dict = sorted(ENTROPY_DICT.items(), key=operator.itemgetter(1), reverse=True)
 		for option, en in sorted_dict:
 			print(option + "," + str(en))
+
+
+def get_all_freq_binarized_options(output=False):
+	if not is_db_clean:
+		raise Exception("Database must be clean to run get_all_freq_binarized_options")
+	global OPT_FREQ_DICT
+	OPT_FREQ_DICT = defaultdict(float)
+	update_dictionary_apply_fn_options_freq(OPT_FREQ_DICT, true_frequency)
+	if output:
+		sorted_dict = sorted(OPT_FREQ_DICT.items(), key=operator.itemgetter(1), reverse=True)
+		for option, freq in sorted_dict:
+			print(option + "," + str(freq))
 
 
 # Add is_highscore col to rprp_puzzle_ranks table
@@ -775,23 +799,24 @@ def distance(view1, view2):
 
 
 # Input: a View dict
-# Output: the View Dict, elementwise multiplied by (1-entropy)
-def apply_inverse_entropy_weighting(view):
-	if not os.path.isfile(ENTROPIES_FILE):
-		raise Exception("ERR: Entropy file not found: " + ENTROPIES_FILE)
-	entropies_dict = {}
-	# Read in the entropies file
-	with open(ENTROPIES_FILE, 'r') as entropies_file:
-		reader = csv.reader(entropies_file)
+# Output: the View Dict, elementwise multiplied by (1-frequency)
+def apply_inverse_frequency_weighting(view):
+
+	if not os.path.isfile(FREQUENCIES_FILE):
+		raise Exception("ERR: Frequency file not found: " + FREQUENCIES_FILE)
+	freq_dict = {}
+	# Read in the frequencies file
+	with open(FREQUENCIES_FILE, 'r') as frequencies_file:
+		reader = csv.reader(frequencies_file)
 		for row in reader:
-			entropies_dict[row[0]] = row[1]
+			freq_dict[row[0]] = row[1]
 	for opt in view.keys():
 		try:
-			view[opt] = view[opt] * (1 - entropies_dict[opt])
+			view[opt] = view[opt] * (1 - freq_dict[opt])
 		except KeyError as e:
-			print("WARN: No entropy found in " + ENTROPIES_FILE + " for option: " + opt)
+			print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
 	if args.debug: # TODO remove after testing
-		print("DEBUG: Applied inverse entropy weighting. View is now:")
+		print("DEBUG: Applied inverse frequency weighting. View is now:")
 		print(view)
 	return view
 
@@ -845,6 +870,11 @@ def entropy(count_0, count_1):
 		return 0.0
 
 	return -(p * math.log(p,2)) - (1 - p) * math.log(1-p,2)
+
+
+# returns frequency of true for a binary var
+def true_frequency(count_0, count_1):
+	return (count_1 * 1.0) / (count_0 + count_1)
 
 # -------- END VIEW-BASED CALCULATIONS -------------
 
