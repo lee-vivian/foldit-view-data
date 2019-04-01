@@ -1,0 +1,61 @@
+view_options__show_contact_map_geoms,0.999542439
+rank_popups,0.981119069
+tooltips,0.909453366
+selection_mode__show_notes,0.885234898
+view_options__guide_pulse,0.8220895
+view_options__gui_fade,0.810587996
+Score/Hydro,0.750276653
+advanced_mode,0.711660139
+Cartoon,0.689701255
+view_options__show_sidechains_with_issues,0.626858211
+view_options__show_hbonds,0.607225428
+view_options__working_pulse_style,0.597933116
+view_options__show_clashes,0.510029046
+sound,0.393909403
+Don't Show (Fast),0.39057949
+Show All (Slow),0.363321367
+view_options__dark_background,0.348312568
+view_options__show_bondable_atoms,0.33073377
+music,0.321657136
+view_options__show_sidechain_hbonds,0.30800691
+view_options__relative_score_coloring,0.272270811
+view_options__show_issues,0.262891824
+view_options__show_voids,0.260642319
+Show Stubs,0.246099144
+Cartoon Thin,0.233007263
+view_options__show_non_protein_hbonds,0.227081145
+view_options__show_other_hbonds,0.224940487
+view_options__show_helix_hbonds,0.222707107
+electron_density_panel__backface_culling,0.169033418
+selection_mode,0.127901328
+view_options__show_backbone_issues,0.10052428
+Score/Hydro+CPK,0.097333449
+puzzle_dialog__show_beginner,0.078779059
+view_options__show_outlines,0.076835937
+Score,0.067477107
+Line,0.055919163
+view_options__show_residue_burial,0.039775533
+puzzle_dialog__show_old,0.034806867
+Hydro,0.034121534
+Rainbow,0.029858358
+switch_residue_colors,0.01519021
+view_options__sym_chain_colors,0.015184163
+Trace Line,0.012170712
+switch_middle_right_click,0.012005426
+view_options__show_buried_polars,0.011176979
+Hydro/Score+CPK,0.005117827
+EnzDes,0.0047288
+Hydro/Score,0.004591733
+AAColor,0.004400243
+Line+H,0.00384996
+Stick,0.001737521
+CPK,0.001606502
+Trace Tube,0.001368651
+Stick+polarH,0.001032031
+Line+polarH,0.00060269
+AbegoColor,0.000483765
+Stick+H,0.000272118
+Sphere,0.000243898
+Cartoon Ligand,9.47E-05
+Ligand Specific,4.03E-06
+Hydrophobic,0
