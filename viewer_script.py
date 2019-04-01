@@ -186,10 +186,16 @@ def test(args):
 	# Tests go here
 
 	#main_stats()
-	centroid_stats("limit 1000")
+	# centroid_stats("limit 1000")
 	#centroid_stats("where is_highscore == 1")
 	#centroid_stats("where is_highscore == 0")
 
+	# test apply_inverse_frequency_weighting()
+	views = query_to_views("limit 1")
+	weighted_views = dict()
+	for id, view in views.iteritems():
+		weighted_view = apply_inverse_frequency_weighting(view)
+		weighted_views[id] = weighted_view
 
 	print("Done.")
 
@@ -809,9 +815,12 @@ def apply_inverse_frequency_weighting(view):
 		reader = csv.reader(frequencies_file)
 		for row in reader:
 			freq_dict[row[0]] = row[1]
+
 	for opt in view.keys():
 		try:
-			view[opt] = view[opt] * (1 - freq_dict[opt])
+			option_val = int(view[opt])
+			multiplier = -1 if option_val == 0 else 1
+			view[opt] = multiplier * (1.0 - float(freq_dict[opt]))
 		except KeyError as e:
 			print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
 	if args.debug: # TODO remove after testing
