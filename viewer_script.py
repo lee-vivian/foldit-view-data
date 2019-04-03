@@ -8,6 +8,9 @@ from collections import defaultdict
 try: input = raw_input
 except NameError: pass
 
+try: from StringIO import StringIO
+except ImportError: from io import StringIO
+
 ENTROPIES_FILE = "entropies.csv"
 FREQUENCIES_FILE = "frequencies.csv"
 EXPERTS_FILE = "experts.csv"
@@ -187,17 +190,22 @@ def test(args):
 	# Tests go here
 
 	#main_stats()
-	# centroid_stats("limit 1000")
-	#centroid_stats("where is_highscore == 1")
-	#centroid_stats("where is_highscore == 0")
+	centroid_stats("limit 1000")
+	centroid_stats("where is_highscore == 1")
+	centroid_stats("where is_highscore == 0")
+	centroid_stats("where is_expert == 0")
+	centroid_stats("where is_expert == 1")
+	centroid_stats("")
 
+	print("freq test")
 	# test apply_inverse_frequency_weighting()
 	views = query_to_views("limit 1")
 	weighted_views = dict()
 	for id, view in views.iteritems():
 		weighted_view = apply_inverse_frequency_weighting(view)
 		weighted_views[id] = weighted_view
-
+	print(weighted_views)
+		
 	print("Done.")
 
 # prints out number of missing entries for each option
@@ -875,8 +883,13 @@ def apply_inverse_frequency_weighting(view):
 #	std = numpy.std(distances)
 #	return mean,std
 
+# Return an array of standard deviations for each dimension in the cluster
 def density(cluster, dims=[-1]):
-	pass
+	stds = []
+	for i in range(len(cluster)):
+		if dims==[-1] or i in dims:
+			stds.append(numpy.std([view[0] for view in cluster]))
+	return stds
 	
 
 
@@ -1024,7 +1037,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path, cProfile, pstats, StringIO
+	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path, cProfile, pstats
 	# import scikit, pandas, and/or oranges?
 
 	global conn, is_db_clean
