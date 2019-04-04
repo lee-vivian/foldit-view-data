@@ -188,6 +188,9 @@ FULL_OPTIONS_LIST = [
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
+	
+	cluster_plot_test()
+
 
 	#main_stats()
 	centroid_stats("limit 1000")
@@ -209,8 +212,37 @@ def test(args):
 		weighted_view = apply_inverse_frequency_weighting(view)
 		weighted_views[id] = weighted_view
 	print(weighted_views)
+	
 		
 	print("Done.")
+	
+def cluster_plot_test():
+	print("cluster plot test")
+	import scipy.cluster.hierarchy as shc
+	import matplotlib.pyplot as plt  
+	plt.figure(figsize=(10,7))
+	data = []
+	for (id,view) in iteritems(views):
+		data.append(view_dict_to_list(view))
+	unicode_clean(data)
+	dend = shc.dendrogram(shc.linkage(data, method='ward'))
+	plt.savefig('test_dendro.png')
+	from sklearn.cluster import AgglomerativeClustering
+	num_clusters = 5
+	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')  
+	cluster.fit_predict(data)
+	data_buckets = {}
+	for j in range(num_clusters):
+		data_buckets[j] = []
+	for i in range(len(cluster)):
+		data_buckets[cluster[i]].append(data[i])
+	for c in range(len(data_buckets.keys())):
+		print("Analyzing cluster " + str(c))
+		print("Density:")
+		print(density(data_buckets[c]))
+		print("Centroid:")
+		print(centroid(data_buckets[c]))
+	print("cluster plot test done.")
 
 # prints out number of missing entries for each option
 # reads 2000 entries at a time
