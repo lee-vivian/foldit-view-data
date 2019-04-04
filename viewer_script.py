@@ -198,6 +198,8 @@ def test(args):
 	centroid_stats("")
 	
 	# TODO group by PIDS_BY_CAT
+#	for cat in PIDS_BY_CAT.keys():
+#		centroid_stats("where puzzle_cat == %s" % cat)
 
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
