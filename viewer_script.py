@@ -196,6 +196,8 @@ def test(args):
 	centroid_stats("where is_expert == 0")
 	centroid_stats("where is_expert == 1")
 	centroid_stats("")
+	
+	# TODO group by PIDS_BY_CAT
 
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
@@ -886,9 +888,10 @@ def apply_inverse_frequency_weighting(view):
 # Return an array of standard deviations for each dimension in the cluster
 def density(cluster, dims=[-1]):
 	stds = []
-	for i in range(len(cluster)):
-		if dims==[-1] or i in dims:
-			stds.append(numpy.std([view[0] for view in cluster]))
+	if dims == [-1]:
+		dims = range(len(cluster[0]))
+	for i in dims:
+		stds.append(numpy.std([view[i] for view in cluster]))
 	return stds
 	
 
