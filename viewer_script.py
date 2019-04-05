@@ -189,16 +189,17 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 	
-	cluster_plot_test()
+	print("cluster test")
+	cluster_plot("group by pid", "dendro_all.png") # FIXME clustering can't hold it all in mem
 
 
 	#main_stats()
-	centroid_stats("limit 1000")
-	centroid_stats("where is_highscore == 1")
-	centroid_stats("where is_highscore == 0")
-	centroid_stats("where is_expert == 0")
-	centroid_stats("where is_expert == 1")
-	centroid_stats("")
+	centroid_stats(where="limit 1000")
+	centroid_stats(where="where is_highscore == 1")
+	centroid_stats(where="where is_highscore == 0")
+	centroid_stats(where="where is_expert == 0")
+	centroid_stats(where="where is_expert == 1")
+	centroid_stats(where="")
 	
 	# TODO group by PIDS_BY_CAT
 #	for cat in PIDS_BY_CAT.keys():
@@ -216,17 +217,23 @@ def test(args):
 		
 	print("Done.")
 	
-def cluster_plot_test():
-	print("cluster plot test")
+def cluster_plot(where, filename):
 	import scipy.cluster.hierarchy as shc
-	import matplotlib.pyplot as plt  
+	import matplotlib
+	matplotlib.use('Agg')
+	import matplotlib.pyplot as plt
 	plt.figure(figsize=(10,7))
+	views = query_to_views(where)
 	data = []
 	for (id,view) in iteritems(views):
 		data.append(view_dict_to_list(view))
 	unicode_clean(data)
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
-	plt.savefig('test_dendro.png')
+	plt.savefig(filename)
+	clusters_to_stats(data)
+	
+def clusters_to_stats(data):
+	print("cluster test")
 	from sklearn.cluster import AgglomerativeClustering
 	num_clusters = 5
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')  
@@ -234,14 +241,12 @@ def cluster_plot_test():
 	data_buckets = {}
 	for j in range(num_clusters):
 		data_buckets[j] = []
-	for i in range(len(cluster)):
-		data_buckets[cluster[i]].append(data[i])
+	cluster_labels = cluster.labels_
+	for i in range(len(cluster_labels)):
+		data_buckets[cluster_labels[i]].append(data[i])
 	for c in range(len(data_buckets.keys())):
 		print("Analyzing cluster " + str(c))
-		print("Density:")
-		print(density(data_buckets[c]))
-		print("Centroid:")
-		print(centroid(data_buckets[c]))
+		centroid_stats(cluster=data_buckets[c])
 	print("cluster plot test done.")
 
 # prints out number of missing entries for each option
@@ -277,14 +282,15 @@ def count_missing():
 
 
 # Report stats for a centroid described by a where query
-def centroid_stats(where):
+def centroid_stats(where="", cluster=None):
 	# Get total centroid
-	views = query_to_views(where)
-	cluster = []
-	for (id,view) in iteritems(views):
-		cluster.append(view_dict_to_list(view))
-	unicode_clean(cluster)
-	print("Analyzing this centroid: " + where)
+	if cluster is None:
+		views = query_to_views(where)
+		cluster = []
+		for (id,view) in iteritems(views):
+			cluster.append(view_dict_to_list(view))
+		unicode_clean(cluster)
+		print("Analyzing this centroid: " + where)
 	print("Density:")
 	print(density(cluster))
 	print("Centroid:")
@@ -760,6 +766,8 @@ def import_experts(recalculate=False):
 # For each result, create a view dict of bools representing each option, sorted by key
 # Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
 def query_to_views(where):
+	if args.debug:
+		print("DEBUG: query_to_views " + where)
 	views = {} # dict of dicts, uniquely identified by uid, pid, and time
 	for bin_opt in BINARY_OPTIONS:
 		c.execute('''select uid, pid, time, %s from options %s''' % (bin_opt, where))
@@ -776,7 +784,8 @@ def query_to_views(where):
 
 	# add CAT options to views dict
 	views = query_binarize_cat_to_dict(where, views)
-
+	if args.debug:
+		print("    query_to_views: " + str(len(views.keys())))
 	return views
 
 
@@ -1114,6 +1123,9 @@ if __name__ == "__main__":
 	import_experts(recalculate=False)
 
 print("...Loaded.")
+
+if args.debug:
+	print("DEBUG mode on")
 
 # TEST
 # pr = cProfile.Profile()
