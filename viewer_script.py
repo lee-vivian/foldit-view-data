@@ -195,8 +195,8 @@ def test(args):
 
 	#main_stats()
 	centroid_stats(where="limit 1000")
-	centroid_stats(where="where is_highscore == 1")
-	centroid_stats(where="where is_highscore == 0")
+	# centroid_stats(where="where is_highscore == 1")
+	# centroid_stats(where="where is_highscore == 0")
 	centroid_stats(where="where is_expert == 0")
 	centroid_stats(where="where is_expert == 1")
 	centroid_stats(where="")
@@ -407,50 +407,95 @@ def get_all_freq_binarized_options(output=False):
 			print(option + "," + str(freq))
 
 
-# Add is_highscore col to specified table
-# Impt Note: must call function on rprp_puzzle_ranks prior to calling on other tables
-def add_is_highscore_col(table):
-
-	# if table is not rprp_puzzle_ranks, check if rprp_puzzle_ranks has is_highscore column first
-	if table != "rprp_puzzle_ranks":
-		c.execute('''PRAGMA table_info(rprp_puzzle_ranks)''')
-		results = c.fetchall()
-		rprp_puzzle_ranks_columns = [result[1].encode('ascii','ignore') for result in results]
-		if "is_highscore" in rprp_puzzle_ranks_columns:
-			raise Exception("Must call add_is_highscore_col for rprp_puzzle_ranks before other tables")
-
-	# add is_highscore column to specified table
-	try:
-		c.execute('''ALTER TABLE %s ADD is_highscore INT DEFAULT -1 NOT NULL''' % table)
-		print('''INFO: Created is_highscore column in %s. Calculating is_highscore ...''' % table)
-	except Exception as e:
-		print('''INFO: is_highscore column already exists in %s. Recalculating is_highscore...''')
+# Returns a dictionary mapping each puzzle id to its maximum high score threshold (score required
+# to be in top 5% of rankings (95th percentile), lower scores are better
+def get_all_puzzle_highscores_dict():
 
 	c.execute('''select distinct pid from rprp_puzzle_ranks''')
 	results = c.fetchall()
-	puzzle_ids_with_ranks = [result[0] for result in results]
+	puzzle_ids = [result[0] for result in results]
 
-	if table == "rprp_puzzle_ranks":
-		update_is_highscore_col_rprp_puzzle_ranks(puzzle_ids_with_ranks)
-	else:
-		# update is_highscore column in specified non-ranks table
-
-
-# Calculate and store is_highscore col values for rprp_puzzle_ranks table
-def update_is_highscore_col_rprp_puzzle_ranks(puzzle_ids):
 	# dictionary that maps pid to score at the 95th percentile for the puzzle
 	pid_highscore = {}
 
 	for pid in puzzle_ids:
 		pid_highscore[pid] = get_highscore(pid)
 
-	for pid in pid_highscore.keys():
-		highscore = pid_highscore[pid]
-		c.execute('''update rprp_puzzle_ranks set is_highscore = 0 where pid == %d and best_score > %d'''
-				  % (pid, highscore))
-		c.execute('''update rprp_puzzle_ranks set is_highscore = 1 where pid == %d and best_score <= %d'''
-				  % (pid, highscore))
+	return pid_highscore
 
+
+# add best_score_is_hs and cur_score_is_hs cols to specified table
+# impt note: must call this function on rprp_puzzle_ranks prior to calling on other tables
+def add_is_highscore_cols(table):
+
+	if table != "rprp_puzzle_ranks":
+		c.execute('''PRAGMA table_info(rprp_puzzle_ranks)''')
+		results = c.fetchall()
+		rprp_puzzle_ranks_cols = [result[1].encode('ascii', 'ignore') for result in results]
+		if "best_score_is_hs" not in rprp_puzzle_ranks_cols or "cur_score_is_hs" not in rprp_puzzle_ranks_cols:
+			raise Exception("Must call add_is_highscore_cols('rprp_puzzle_ranks') first")
+
+	# add best_score_is column to specified table
+	try:
+		c.execute('''ALTER TABLE %s ADD best_score_is_hs INT DEFAULT -1 NOT NULL''' % table)
+		print('''INFO: Created best_score_is_hs column in %s. Calculating best_score_is_hs ...''' % table)
+	except Exception as e:
+		print('''INFO: best_score_is_hs column already exists in %s. Recalculating best_score_is_hs...''' % table)
+
+	# add cur_score_is column to specified table
+	try:
+		c.execute('''ALTER TABLE %s ADD cur_score_is_hs INT DEFAULT -1 NOT NULL''' % table)
+		print('''INFO: Created cur_score_is_hs column in %s. Calculating cur_score_is_hs ...''' % table)
+	except Exception as e:
+		print('''INFO: cur_score_is_hs column already exists in %s. Recalculating cur_score_is_hs...''' % table)
+
+	# get dictionary {pid : high score} from rprp_puzzle_ranks table
+	pid_highscore_dict = get_all_puzzle_highscores_dict()
+
+	if table == "rprp_puzzle_ranks":
+		update_is_highscore_cols_for_table("rprp_puzzle_ranks", pid_highscore_dict)
+	elif table == "options":
+		update_is_highscore_cols_for_table("options", pid_highscore_dict)
+	else:
+		raise Exception("is high score columns not relevant to specified table: " + str(table))
+
+
+# update best_score_is_hs and cur_score_is_hs columns in specified table using dictionary {pid : highscore}
+def update_is_highscore_cols_for_table(table, pid_highscore_dict):
+
+	if table == "rprp_puzzle_ranks":
+
+		for pid in pid_highscore_dict.keys():
+
+			highscore = pid_highscore_dict[pid]
+			c.execute('''update rprp_puzzle_ranks set best_score_is_hs = 0 where pid == %d and best_score > %d'''
+				% (pid, highscore))
+			c.execute('''update rprp_puzzle_ranks set best_score_is_hs = 1 where pid == %d and best_score <= %d'''
+				% (pid, highscore))
+			c.execute('''update rprp_puzzle_ranks set cur_score_is_hs = 0 where pid == %d and cur_score > %d'''
+				% (pid, highscore))
+			c.execute('''update rprp_puzzle_ranks set cur_score_is_hs = 1 where pid == %d and cur_score <= %d'''
+				% (pid, highscore))
+
+	elif table == "options":
+
+		print("updating options best_score_is_hs")
+
+		update_query = "update options set best_score_is_hs = " \
+					   "(select best_score_is_hs from rprp_puzzle_ranks " \
+					   "where pid == options.pid and uid == options.uid limit 100) " \
+					   "where exists (select best_score_is_hs from rprp_puzzle_ranks " \
+					   "where pid == options.pid and uid == options.uid limit 100)"
+
+		print(update_query)
+
+		c.execute(update_query)
+
+
+	else:
+		raise Exception("No is high score columns for specified table: " + str(table))
+
+	# save changes to database
 	conn.commit()
 
 
@@ -855,14 +900,14 @@ def is_highscore(pid, score):
 	return score <= min_score
 
 
-# Returns score threshold for pid to be in top 5% of best scores for the puzzle
+# Returns score threshold for pid to be in top 5% of best scores for the puzzle, lower scores are better
 def get_highscore(pid):
 	c.execute(
 		'''select distinct uid, best_score from rprp_puzzle_ranks where pid=%d group by uid order by best_score asc;''' % pid)
 	# count entries, get the entry that's exactly 95th percentile
 	results = c.fetchall()
 	num_scores = len(results)
-	index = min(int(math.ceil(num_scores * 0.05)), len(results) - 1)  # prevent index out of range error
+	index = min(int(math.ceil(num_scores * 0.05)) - 1, len(results) - 1)  # prevent index out of range error
 	min_score = results[index][1]
 	return min_score
 
@@ -1077,7 +1122,8 @@ def io_mode(args):
 
 		if command == "process":
 			print("INFO: Processing data:")
-			add_is_highscore_col("asdf")
+			add_is_highscore_cols("rprp_puzzle_ranks")
+			add_is_highscore_cols("options")
 			# add_is_expert_col("rprp_puzzle_ranks")
 			# add_is_expert_col("options")
 
