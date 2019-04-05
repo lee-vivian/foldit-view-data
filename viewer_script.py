@@ -401,21 +401,39 @@ def get_all_freq_binarized_options(output=False):
 			print(option + "," + str(freq))
 
 
-# Add is_highscore col to rprp_puzzle_ranks table
-def add_is_highscore_col():
+# Add is_highscore col to specified table
+# Impt Note: must call function on rprp_puzzle_ranks prior to calling on other tables
+def add_is_highscore_col(table):
 
+	# if table is not rprp_puzzle_ranks, check if rprp_puzzle_ranks has is_highscore column first
+	if table != "rprp_puzzle_ranks":
+		c.execute('''PRAGMA table_info(rprp_puzzle_ranks)''')
+		results = c.fetchall()
+		rprp_puzzle_ranks_columns = [result[1].encode('ascii','ignore') for result in results]
+		if "is_highscore" in rprp_puzzle_ranks_columns:
+			raise Exception("Must call add_is_highscore_col for rprp_puzzle_ranks before other tables")
+
+	# add is_highscore column to specified table
 	try:
-		c.execute("ALTER TABLE rprp_puzzle_ranks ADD is_highscore INT DEFAULT -1 NOT NULL")
-		print("INFO: Created is_highscore column in rprp_puzzle_ranks. Calculating is_highscore ...")
+		c.execute('''ALTER TABLE %s ADD is_highscore INT DEFAULT -1 NOT NULL''' % table)
+		print('''INFO: Created is_highscore column in %s. Calculating is_highscore ...''' % table)
 	except Exception as e:
-		print("INFO: is_highscore column already exists in rprp_puzzle_ranks. Recalculating is_highscore...")
-
-	# dictionary that maps pid to score at the 95th percentile for the puzzle
-	pid_highscore = {}
+		print('''INFO: is_highscore column already exists in %s. Recalculating is_highscore...''')
 
 	c.execute('''select distinct pid from rprp_puzzle_ranks''')
 	results = c.fetchall()
-	puzzle_ids = [result[0] for result in results]
+	puzzle_ids_with_ranks = [result[0] for result in results]
+
+	if table == "rprp_puzzle_ranks":
+		update_is_highscore_col_rprp_puzzle_ranks(puzzle_ids_with_ranks)
+	else:
+		# update is_highscore column in specified non-ranks table
+
+
+# Calculate and store is_highscore col values for rprp_puzzle_ranks table
+def update_is_highscore_col_rprp_puzzle_ranks(puzzle_ids):
+	# dictionary that maps pid to score at the 95th percentile for the puzzle
+	pid_highscore = {}
 
 	for pid in puzzle_ids:
 		pid_highscore[pid] = get_highscore(pid)
@@ -1050,9 +1068,9 @@ def io_mode(args):
 
 		if command == "process":
 			print("INFO: Processing data:")
-			add_is_highscore_col()
-			add_is_expert_col("rprp_puzzle_ranks")
-			add_is_expert_col("options")
+			add_is_highscore_col("asdf")
+			# add_is_expert_col("rprp_puzzle_ranks")
+			# add_is_expert_col("options")
 
 		if not single_query:
 			print("Enter command (h for help): ")
