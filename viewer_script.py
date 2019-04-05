@@ -430,13 +430,13 @@ def add_is_highscore_col():
 	conn.commit()
 
 
-# Add is_expert col to rprp_puzzle_ranks table
-def add_is_expert_col():
+# Add is_expert col to specified table
+def add_is_expert_col(table):
 	try:
-		c.execute("ALTER TABLE rprp_puzzle_ranks ADD is_expert INT DEFAULT 0 NOT NULL")
-		print("INFO: Created is_expert column in rprp_puzzle_ranks. Calculating is_expert ...")
+		c.execute('''ALTER TABLE %s ADD is_expert INT DEFAULT 0 NOT NULL''' % table)
+		print('''INFO: Created is_expert column in %s. Calculating is_expert ...''' % table)
 	except Exception as e:
-		print("INFO: is_expert column already exists in rprp_puzzle_ranks. Recalculating is_expert...")
+		print('''INFO: is_expert column already exists in %s. Recalculating is_expert...''' % table)
 
 	# Get list of experts
 	if not os.path.isfile(EXPERTS_FILE):
@@ -446,7 +446,7 @@ def add_is_expert_col():
 		reader = csv.reader(experts_file)
 		for row in reader:
 			experts_list.append(row[0])
-	c.execute('''update rprp_puzzle_ranks set is_expert = 1 where uid in %s''' % str(tuple(experts_list)))
+	c.execute('''update %s set is_expert = 1 where uid in %s''' % (table, str(tuple(experts_list))))
 	conn.commit()
 
 
@@ -1051,7 +1051,8 @@ def io_mode(args):
 		if command == "process":
 			print("INFO: Processing data:")
 			add_is_highscore_col()
-			add_is_expert_col()
+			add_is_expert_col("rprp_puzzle_ranks")
+			add_is_expert_col("options")
 
 		if not single_query:
 			print("Enter command (h for help): ")
