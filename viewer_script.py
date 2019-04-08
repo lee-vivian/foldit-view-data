@@ -184,21 +184,27 @@ FULL_OPTIONS_LIST = [
 ]
 
 # --------------- TEST BED -------------------------
+
+def test2(args):
+	add_is_highscore_cols("options")
+
+
 # place to run tests
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 	
 	print("cluster test")
-	cluster_plot("group by pid", "dendro_all.png") # FIXME clustering can't hold it all in mem
+	#cluster_plot("group by pid", "dendro_all.png") # FIXME clustering can't hold it all in mem
 
 
 	#main_stats()
-	centroid_stats(where="limit 1000")
-	# centroid_stats(where="where is_highscore == 1")
-	# centroid_stats(where="where is_highscore == 0")
+	#centroid_stats(where="limit 1000")
 	centroid_stats(where="where is_expert == 0")
 	centroid_stats(where="where is_expert == 1")
+	return
+	# centroid_stats(where="where is_highscore == 1")
+	# centroid_stats(where="where is_highscore == 0")
 	centroid_stats(where="")
 	
 	# TODO group by PIDS_BY_CAT
@@ -292,11 +298,21 @@ def centroid_stats(where="", cluster=None):
 		unicode_clean(cluster)
 		print("Analyzing this centroid: " + where)
 	print("Density:")
-	print(density(cluster))
+	d = density(cluster)
+	print(d)
 	print("Centroid:")
-	print(centroid(cluster))
-
-
+	c = centroid(cluster)
+	print(c)
+	with open('centroid_stats_' + where + '.csv', 'w') as c_file:
+		writer = csv.writer(c_file)
+		writer.writerow(["dim", "M", "std"])
+		dimensions = [opt for opt in BINARY_OPTIONS]
+		for cat_opt in CAT_OPTIONS.keys():
+			for opt in CAT_OPTIONS[cat_opt]:
+				dimensions.append(opt)
+		for i in range(len(dimensions)):
+			writer.writerow([dimensions[i], c[i], d[i]])
+	
 # ------------ END TEST BED -----------------------
 
 
@@ -358,14 +374,13 @@ def update_dictionary_apply_fn_options_freq(dictionary, fn):
 
 	return dictionary
 
-# Warning: This function takes 30+ minutes (haven't measured exactly, might be as much as 3 hours)
 def get_all_experts():
 	# get all users
 	c.execute('''select distinct uid from rprp_puzzle_ranks''')
 	users = c.fetchall()
-	print("Identifying experts (This will take a while):")
-	user_count = 0
+	print("Identifying experts:")
 	expert_dict = {}
+	user_count = 0
 	for user in users:
 		user_count += 1
 		num_hs = count_expertise(user)
@@ -428,6 +443,7 @@ def get_all_puzzle_highscores_dict():
 # impt note: must call this function on rprp_puzzle_ranks prior to calling on other tables
 def add_is_highscore_cols(table):
 
+	# must get is_hs on ranks table before options table
 	if table != "rprp_puzzle_ranks":
 		c.execute('''PRAGMA table_info(rprp_puzzle_ranks)''')
 		results = c.fetchall()
@@ -437,12 +453,12 @@ def add_is_highscore_cols(table):
 
 	# add best_score_is column to specified table
 	try:
-		c.execute('''ALTER TABLE %s ADD best_score_is_hs INT DEFAULT -1 NOT NULL''' % table)
+		c.execute('''ALTER TABLE %s ADD best_score_is_hs INT DEFAULT -1''' % table)
 		print('''INFO: Created best_score_is_hs column in %s. Calculating best_score_is_hs ...''' % table)
 	except Exception as e:
 		print('''INFO: best_score_is_hs column already exists in %s. Recalculating best_score_is_hs...''' % table)
 
-	# add cur_score_is column to specified table
+	# add cur_score_is_hs column to specified table
 	try:
 		c.execute('''ALTER TABLE %s ADD cur_score_is_hs INT DEFAULT -1 NOT NULL''' % table)
 		print('''INFO: Created cur_score_is_hs column in %s. Calculating cur_score_is_hs ...''' % table)
@@ -479,18 +495,32 @@ def update_is_highscore_cols_for_table(table, pid_highscore_dict):
 
 	elif table == "options":
 
+		print("options.best_score_is_hs is DEPRECATED")
+		return
 		print("updating options best_score_is_hs")
 
-		update_query = "update options set best_score_is_hs = " \
-					   "(select best_score_is_hs from rprp_puzzle_ranks " \
-					   "where pid == options.pid and uid == options.uid limit 100) " \
-					   "where exists (select best_score_is_hs from rprp_puzzle_ranks " \
-					   "where pid == options.pid and uid == options.uid limit 100)"
-
-		print(update_query)
-
-		c.execute(update_query)
-
+		c.execute('''select distinct uid, pid from options''')
+		entries = c.fetchall()
+		count = 0
+		for entry in entries:
+			uid = entry[0]
+			pid = entry[1]
+			try:
+				c.execute('''select best_score_is_hs from rprp_puzzle_ranks where uid == \"%s\" and pid == %d;''' % (uid, pid))
+				best_score_is_hs = c.fetchone()
+				if best_score_is_hs == None:
+					best_score_is_hs = -1
+				else:
+					best_score_is_hs = best_score_is_hs[0]
+				print(best_score_is_hs)
+				c.execute('''update options set best_score_is_hs = %d where uid == \"%s\" and pid == %d;''' % (best_score_is_hs, uid, pid))
+				count += 1
+			except Exception as e:
+				print(e)
+			if count % 10 == 0:
+				print('.',end='')
+				sys.stdout.flush()
+				return
 
 	else:
 		raise Exception("No is high score columns for specified table: " + str(table))
@@ -792,12 +822,14 @@ def import_categories():
 
 def import_experts(recalculate=False):
 	global EXPERTS
+	EXPERTS = []
 	if recalculate:
 		get_all_experts()
-	with open('experts.csv', 'r') as exp_file:
-		reader = csv.reader(exp_file)
-		for row in reader:
-			EXPERTS.append(row[0])
+	if EXPERTS == []:
+		with open('experts.csv', 'r') as exp_file:
+			reader = csv.reader(exp_file)
+			for row in reader:
+				EXPERTS.append(row[0])
 	print("Imported " + str(len(EXPERTS)) + " experts.")
 
 # -------- END ONE TIME FUNCTIONS -----------------
@@ -918,7 +950,7 @@ def count_expertise(uid):
 	# count is_highscore
 	has_hs_column = True
 	try:
-		c.execute('''select pid, best_score, is_highscore from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
+		c.execute('''select pid, best_score, best_score_is_hs from rprp_puzzle_ranks where uid=\"%s\" group by pid order by best_score asc;''' % uid)
 	except:
 		print("WARN: no is_highscore column available")
 		has_hs_column = False
@@ -1053,7 +1085,6 @@ def io_mode(args):
 			print("e [command] - execute command")
 			print("freq [option] - count values of an option (or 'all')")
 			print("ent [option] - get entropy of option (or 'all')")
-			print("experts - count and list all experts")
 			print("clean - clean the database of bad entries")
 			print("process - add new data to database, e.g. highscore info, is expert info")
 			print("csv options - write options table to csv")
@@ -1071,9 +1102,6 @@ def io_mode(args):
 					print(info[0])
 			except:
 				print("Invalid table name: " + str(table))
-
-		if command == "experts":
-			get_all_experts()
 
 		if command == "freq all":
 			freq_all()
@@ -1122,10 +1150,15 @@ def io_mode(args):
 
 		if command == "process":
 			print("INFO: Processing data:")
+			print("INFO: Updating high scores...")
 			add_is_highscore_cols("rprp_puzzle_ranks")
-			add_is_highscore_cols("options")
-			# add_is_expert_col("rprp_puzzle_ranks")
-			# add_is_expert_col("options")
+			print("INFO: Finding experts...")
+			import_experts(recalculate=True)
+			add_is_expert_col("rprp_puzzle_ranks")
+			add_is_expert_col("options")
+			print("TEST: adding hs to options")
+			#add_is_highscore_cols("options") # DEPRECATED, work around
+			
 
 		if not single_query:
 			print("Enter command (h for help): ")
@@ -1166,7 +1199,10 @@ if __name__ == "__main__":
 	global c
 	c = conn.cursor()
 	import_categories()
-	import_experts(recalculate=False)
+	try:
+		import_experts(recalculate=False)
+	except IOError as e:
+		import_experts(recalculate=True)
 
 print("...Loaded.")
 
@@ -1174,15 +1210,17 @@ if args.debug:
 	print("DEBUG mode on")
 
 # TEST
-# pr = cProfile.Profile()
-# pr.enable()
-# test(args)
-# pr.disable()
-# s = StringIO.StringIO()
-# sortby = 'cumulative'
-# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-# ps.print_stats()
-# print(s.getvalue())
+#import StringIO
+#pr = cProfile.Profile()
+#pr.enable()
+#s = StringIO.StringIO()
+#test2(args)
+#pr.disable()
+#sortby = 'cumulative'
+#ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+#ps.print_stats()
+#print(s.getvalue())
+#exit(1)
 
 if args.test:
 	test(args)
