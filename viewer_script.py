@@ -190,7 +190,7 @@ def test(args):
 	# Tests go here
 	
 	print("cluster test")
-	cluster_plot("group by pid", "dendro_all.png") # FIXME clustering can't hold it all in mem
+	cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
 
 
 	#main_stats()
