@@ -195,16 +195,16 @@ def test(args):
 	# Tests go here
 	
 	print("cluster test")
-	cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
+	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
 
 	#main_stats()
 	#centroid_stats(where="limit 1000")
-	centroid_stats(where="where is_expert == 0")
-	centroid_stats(where="where is_expert == 1")
-	return
+	#centroid_stats(where="where is_expert == 0")
+	#centroid_stats(where="where is_expert == 1")
 	# centroid_stats(where="where is_highscore == 1")
 	# centroid_stats(where="where is_highscore == 0")
 	centroid_stats(where="")
+	return
 	
 	# TODO group by PIDS_BY_CAT
 #	for cat in PIDS_BY_CAT.keys():
