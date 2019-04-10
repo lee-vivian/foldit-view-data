@@ -193,7 +193,7 @@ def test2(args):
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
-	
+
 	print("cluster test")
 	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
 
@@ -545,6 +545,22 @@ def add_is_expert_col(table):
 		for row in reader:
 			experts_list.append(row[0])
 	c.execute('''update %s set is_expert = 1 where uid in %s''' % (table, str(tuple(experts_list))))
+	conn.commit()
+
+
+# Add puzzle_cat col to options table
+def add_puzzle_cat_col_to_options():
+	try:
+		c.execute('''ALTER TABLE options ADD puzzle_cat TEXT''')
+		print('''INFO: Created puzzle_cat column in options. Calculating puzzle_cat ...''')
+
+	except Exception as e:
+		print('''INFO: puzzle_cat column already exists in options. Recalculating puzzle_cat...''')
+
+	for cat in PIDS_BY_CAT.keys():
+		puzzle_ids = map(int, PIDS_BY_CAT[cat])
+		c.execute('''update options set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
+
 	conn.commit()
 
 
@@ -1149,14 +1165,16 @@ def io_mode(args):
 
 		if command == "process":
 			print("INFO: Processing data:")
-			print("INFO: Updating high scores...")
-			add_is_highscore_cols("rprp_puzzle_ranks")
-			print("INFO: Finding experts...")
-			import_experts(recalculate=True)
-			add_is_expert_col("rprp_puzzle_ranks")
-			add_is_expert_col("options")
-			print("TEST: adding hs to options")
-			#add_is_highscore_cols("options") # DEPRECATED, work around
+			print("INFO: adding puzzle_cat to options")
+			add_puzzle_cat_col_to_options()
+			# print("INFO: Updating high scores...")
+			# add_is_highscore_cols("rprp_puzzle_ranks")
+			# print("INFO: Finding experts...")
+			# import_experts(recalculate=True)
+			# add_is_expert_col("rprp_puzzle_ranks")
+			# add_is_expert_col("options")
+			# print("TEST: adding hs to options")
+			# #add_is_highscore_cols("options") # DEPRECATED, work around
 			
 
 		if not single_query:
