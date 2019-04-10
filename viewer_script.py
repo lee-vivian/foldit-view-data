@@ -15,6 +15,7 @@ ENTROPIES_FILE = "entropies.csv"
 FREQUENCIES_FILE = "frequencies.csv"
 EXPERTS_FILE = "experts.csv"
 MIN_HIGHSCORES_PER_EXPERT = 2
+MIN_SAMPLES_PER_GROUP = 100
 
 
 """
@@ -186,30 +187,16 @@ FULL_OPTIONS_LIST = [
 # --------------- TEST BED -------------------------
 
 def test2(args):
-	add_is_highscore_cols("options")
+	#print("cluster test")
+	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
+	pass
 
 
 # place to run tests
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
-
-	print("cluster test")
-	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
-
-	#main_stats()
-	#centroid_stats(where="limit 1000")
-	#centroid_stats(where="where is_expert == 0")
-	#centroid_stats(where="where is_expert == 1")
-	# centroid_stats(where="where is_highscore == 1")
-	# centroid_stats(where="where is_highscore == 0")
-	centroid_stats(where="")
-	return
-	
-	# TODO group by PIDS_BY_CAT
-#	for cat in PIDS_BY_CAT.keys():
-#		centroid_stats("where puzzle_cat == %s" % cat)
-
+		
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
 	views = query_to_views("limit 1")
@@ -287,22 +274,26 @@ def count_missing():
 
 
 # Report stats for a centroid described by a where query
-def centroid_stats(where="", cluster=None):
+def centroid_stats(where="", cluster=None, name=""):
+	if cluster == []: # given empty cluster
+		return
 	# Get total centroid
 	if cluster is None:
 		views = query_to_views(where)
 		cluster = []
 		for (id,view) in iteritems(views):
 			cluster.append(view_dict_to_list(view))
-		unicode_clean(cluster)
 		print("Analyzing this centroid: " + where)
+	unicode_clean(cluster)
 	print("Density:")
 	d = density(cluster)
 	print(d)
 	print("Centroid:")
 	c = centroid(cluster)
 	print(c)
-	with open('centroid_stats_' + where + '.csv', 'w') as c_file:
+	if name == "":
+		name = where
+	with open('centroid_stats_' + name + '.csv', 'w') as c_file:
 		writer = csv.writer(c_file)
 		writer.writerow(["dim", "M", "std"])
 		dimensions = [opt for opt in BINARY_OPTIONS]
@@ -318,17 +309,91 @@ def centroid_stats(where="", cluster=None):
 
 # ------------ ONE TIME FUNCTIONS -----------------
 
+def get_valid_puzzle_categories():
+	puzzle_category_results = c.execute('''select puzzle_cat, count(puzzle_cat) from options group by puzzle_cat;''')
+	puzzle_categories = []
+	for result in puzzle_category_results:
+		if result[1] > 0:
+			puzzle_categories.append(result[0])
+	return puzzle_categories
+	
+def get_valid_gids():
+	group_results = c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
+	groups = []
+	for result in group_results:
+		if result[1] > MIN_SAMPLES_PER_GROUP:
+			groups.append(result[0])
+	return groups
+
 # Calculate and print full report of interesting stats
 def main_stats():
-	pass
+	print("INFO: Beginning main stats tests")
+	# [DONE] Cluster by expert/non, report clustering statistics
+	
+		#centroid_stats(where="where is_expert == 0")
+		#centroid_stats(where="where is_expert == 1")
 
-	# TODO apply filters
-
-	# Cluster by expert/non, report clustering statistics
+	# within group and within player densities
+	print("Loading group and puzzle category data")
+	gids = get_valid_gids()
+	puzzle_categories = get_valid_puzzle_categories()
+	
+	print("Calculating group and player similarities")
+	for gid in gids:
+		if gid == 0: # user not in a group
+			continue
+		user_results = c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
+		users = [result[0] for result in user_results]
+		if args.debug:
+			print("\nDEBUG: group " + str(gid) + " has " + str(len(users)) + " users starting with " + str(users[0]))
+		
+		lists_per_group = []
+		lists_per_group_per_cat = {}
+		for user in users:
+			print('!',end='')
+			sys.stdout.flush()
+			lists_per_user = []
+			for cat in puzzle_categories:
+				print('.',end='')
+				sys.stdout.flush()
+				if cat not in lists_per_group_per_cat:
+					lists_per_group_per_cat[cat] = []
+				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and puzzle_cat = \"%s\" ''' % (user, cat))
+				lists_per_user_per_cat = []
+				for view in views_per_user_per_cat:
+					lists_per_user_per_cat.append(view_dict_to_list(view))
+				centroid_name = str(cat) + str(user)
+				centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
+				lists_per_user += lists_per_user_per_cat
+				lists_per_group_per_cat[cat] += lists_per_user_per_cat
+			centroid_name = str(user)
+			centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
+			lists_per_group += lists_per_user
+		centroid_name = str(cat) + str(user)
+		centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
+		for cat in puzzle_categories:
+			centroid_name = str(cat) + str(gid)
+			centroid_stats(cluster=lists_per_group_per_cat[cat], name=centroid_name)
+		
 
 	# Cluster by high score / not, report clustering statistics
 
+	# TODO have this look at rprp_puzzle_ranks best_score_is_hs
+	
+	# centroid_stats(where="where is_highscore == 1")
+	# centroid_stats(where="where is_highscore == 0")
+	
 	# Cluster by puzzle category, report clustering statistics
+	#for cat in puzzle_categories: # JUST PUZZLE CATEGORIES
+	#	print("centroid test " + str(cat))
+	#	centroid_stats('''where puzzle_cat == \"%s\" ''' % cat)
+	#for cat in puzzle_categories: # PUZZLE CATEGORIES + EXPERTS
+	#	print("centroid test expert " + str(cat))
+	#	centroid_stats('''where puzzle_cat == \"%s\" and is_expert == 1''' % cat)
+	#for cat in PIDS_BY_CAT.keys(): # PUZZLE CATEGORIES + HIGHSCORE
+	#	print("centroid test hs " + str(cat))
+	#	centroid_stats('''where puzzle_cat == \"%s\" and is_highscore == 1''' % cat)
+
 
 
 def freq_all():
@@ -859,11 +924,13 @@ def import_experts(recalculate=False):
 # Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
 def query_to_views(where):
 	if args.debug:
-		print("DEBUG: query_to_views " + where)
+		print("\nDEBUG: query_to_views " + str(where))
 	views = {} # dict of dicts, uniquely identified by uid, pid, and time
 	for bin_opt in BINARY_OPTIONS:
 		c.execute('''select uid, pid, time, %s from options %s''' % (bin_opt, where))
 		results = c.fetchall()
+		if len(results) == 0: # shortcut for bad where
+			break
 		for result in results:
 			unique_id = str(result[0]) + str(result[1]) + str(result[2])
 			if unique_id not in views:
@@ -875,9 +942,10 @@ def query_to_views(where):
 			views[unique_id] = view
 
 	# add CAT options to views dict
-	views = query_binarize_cat_to_dict(where, views)
+	if views != {}:
+		views = query_binarize_cat_to_dict(where, views)
 	if args.debug:
-		print("    query_to_views: " + str(len(views.keys())))
+		print("    query_to_views: " + str(len(views.keys())) + " results\n")
 	return views
 
 
@@ -1040,6 +1108,8 @@ def apply_inverse_frequency_weighting(view):
 
 # Return an array of standard deviations for each dimension in the cluster
 def density(cluster, dims=[-1]):
+	if cluster == []: # handle empty set
+		return []
 	stds = []
 	if dims == [-1]:
 		dims = range(len(cluster[0]))
@@ -1053,6 +1123,8 @@ def density(cluster, dims=[-1]):
 # returns the centroid of a cluster
 # if dims option is set, calculates for only specific dimension(s)
 def centroid(clus, dims=[-1]):
+	if clus == []: # handle empty set
+		return []
 	cluster = clus
 	if dims != [-1]:
 		cluster = numpy.delete(cluster, dims, axis=1)
@@ -1102,6 +1174,7 @@ def io_mode(args):
 			print("ent [option] - get entropy of option (or 'all')")
 			print("clean - clean the database of bad entries")
 			print("process - add new data to database, e.g. highscore info, is expert info")
+			print("main - run all main stats tests (will take a while)")
 			print("csv options - write options table to csv")
 
 		if command == 't':
@@ -1132,6 +1205,9 @@ def io_mode(args):
 
 		if command == "clean":
 			clean_db()
+			
+		if command == "main":
+			main_stats()
 
 		if command == "csv options":
 			write_options_csv("")
@@ -1166,13 +1242,13 @@ def io_mode(args):
 		if command == "process":
 			print("INFO: Processing data:")
 			print("INFO: adding puzzle_cat to options")
-			add_puzzle_cat_col_to_options()
+			#add_puzzle_cat_col_to_options()
 			# print("INFO: Updating high scores...")
 			# add_is_highscore_cols("rprp_puzzle_ranks")
 			# print("INFO: Finding experts...")
 			# import_experts(recalculate=True)
 			# add_is_expert_col("rprp_puzzle_ranks")
-			# add_is_expert_col("options")
+			#add_is_expert_col("options")
 			# print("TEST: adding hs to options")
 			# #add_is_highscore_cols("options") # DEPRECATED, work around
 			
