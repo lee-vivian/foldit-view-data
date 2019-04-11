@@ -111,6 +111,8 @@ BINARY_OPTIONS = [
 	"view_options__working_pulse_style",
 ]
 
+CAT_KEYS = ["view_options__current_visor", "view_options__render_style", "view_options__sidechain_mode"]
+
 CAT_OPTIONS = {
 	"view_options__current_visor": ["AAColor", "AbegoColor", "CPK", "EnzDes", "Hydro", "Hydro/Score", "Hydro/Score+CPK", "Hydrophobic", "Ligand Specific", "Rainbow", "Score", "Score/Hydro", "Score/Hydro+CPK"],
 	"view_options__render_style": ["Cartoon", "Cartoon Ligand", "Cartoon Thin", "Line", "Line+H", "Line+polarH", "Sphere", "Stick", "Stick+H", "Stick+polarH", "Trace Line", "Trace Tube"],
@@ -297,7 +299,7 @@ def centroid_stats(where="", cluster=None, name=""):
 		writer = csv.writer(c_file)
 		writer.writerow(["dim", "M", "std"])
 		dimensions = [opt for opt in BINARY_OPTIONS]
-		for cat_opt in CAT_OPTIONS.keys():
+		for cat_opt in CAT_KEYS:
 			for opt in CAT_OPTIONS[cat_opt]:
 				dimensions.append(opt)
 		for i in range(len(dimensions)):
@@ -310,7 +312,8 @@ def centroid_stats(where="", cluster=None, name=""):
 # ------------ ONE TIME FUNCTIONS -----------------
 
 def get_valid_puzzle_categories():
-	puzzle_category_results = c.execute('''select puzzle_cat, count(puzzle_cat) from options group by puzzle_cat;''')
+	c.execute('''select puzzle_cat, count(puzzle_cat) from options group by puzzle_cat;''')
+	puzzle_category_results = c.fetchall()
 	puzzle_categories = []
 	for result in puzzle_category_results:
 		if result[1] > 0:
@@ -318,7 +321,8 @@ def get_valid_puzzle_categories():
 	return puzzle_categories
 	
 def get_valid_gids():
-	group_results = c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
+	c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
+	group_results = c.fetchall()
 	groups = []
 	for result in group_results:
 		if result[1] > MIN_SAMPLES_PER_GROUP:
@@ -338,14 +342,34 @@ def main_stats():
 	gids = get_valid_gids()
 	puzzle_categories = get_valid_puzzle_categories()
 	
+	# Cluster by high score / not, report clustering statistics
+	print("Calculating high score similarities")
+	all_highscores = []
+	for cat in puzzle_categories:
+		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and puzzle_cat == \"%s\"; ''' % cat)
+		highscore_results = c.fetchall()
+		print("\nINFO: " + str(len(highscore_results)) + " high score results for " + str(cat) + "\n")
+		highscores_in_cat = []
+		for uid, pid in highscore_results:
+			print('.',end='')
+			sys.stdout.flush()
+			views_per_user_per_cat = query_to_views('''where uid = \"%s\" and pid = %d ''' % (uid, pid))
+			for idkey, view in views_per_user_per_cat.iteritems():
+				highscores_in_cat.append(view_dict_to_list(view))
+		centroid_name = "highscore_" + str(cat)
+		centroid_stats(cluster=highscores_in_cat, name=centroid_name)
+		all_highscores += highscores_in_cat
+		centroid_name = "all_highscores"
+		centroid_stats(cluster=all_highscores, name=centroid_name)
+			
 	print("Calculating group and player similarities")
 	for gid in gids:
 		if gid == 0: # user not in a group
 			continue
-		user_results = c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
+		c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
+		user_results = c.fetchall()
 		users = [result[0] for result in user_results]
-		if args.debug:
-			print("\nDEBUG: group " + str(gid) + " has " + str(len(users)) + " users starting with " + str(users[0]))
+		print("\INFO: group " + str(gid) + " has " + str(len(users)) + " users\n")
 		
 		lists_per_group = []
 		lists_per_group_per_cat = {}
@@ -375,14 +399,10 @@ def main_stats():
 			centroid_name = str(cat) + str(gid)
 			centroid_stats(cluster=lists_per_group_per_cat[cat], name=centroid_name)
 		
-
-	# Cluster by high score / not, report clustering statistics
-
-	# TODO have this look at rprp_puzzle_ranks best_score_is_hs
+		
 	
-	# centroid_stats(where="where is_highscore == 1")
-	# centroid_stats(where="where is_highscore == 0")
 	
+	# EXPERTISE STATS
 	# Cluster by puzzle category, report clustering statistics
 	#for cat in puzzle_categories: # JUST PUZZLE CATEGORIES
 	#	print("centroid test " + str(cat))
@@ -628,6 +648,21 @@ def add_puzzle_cat_col_to_options():
 
 	conn.commit()
 
+# Add puzzle_cat col to rprp_puzzle_ranks table
+def add_puzzle_cat_col_to_ranks():
+	try:
+		c.execute('''ALTER TABLE rprp_puzzle_ranks ADD puzzle_cat TEXT''')
+		print('''INFO: Created puzzle_cat column in rprp_puzzle_ranks. Calculating puzzle_cat ...''')
+
+	except Exception as e:
+		print('''INFO: puzzle_cat column already exists in rprp_puzzle_ranks. Recalculating puzzle_cat...''')
+
+	for cat in PIDS_BY_CAT.keys():
+		puzzle_ids = map(int, PIDS_BY_CAT[cat])
+		c.execute('''update rprp_puzzle_ranks set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
+
+	conn.commit()
+	
 
 # ------------ WRITE TO CSV FUNCTIONS -----------------
 
@@ -674,7 +709,7 @@ def write_options_csv(where):
 	
 def test_write_options_csv(where):
 	#cat_opts = []
-	#for cat in CAT_OPTIONS.keys():
+	#for cat in CAT_KEYS:
 	#	for o in CAT_OPTIONS[cat]
 	#		cat_opts.append(o)
 	options_list = ','.join(BINARY_OPTIONS) # + cat_opts)
@@ -806,7 +841,7 @@ def remove_major_missing_entries():
 
 	print("INFO: Removing entries with major missing data...")
 
-	all_options = BINARY_OPTIONS + CAT_OPTIONS.keys()
+	all_options = BINARY_OPTIONS + CAT_KEYS
 	sep = ","
 	query_cols = sep.join(["uid", "pid", "time"] + all_options)
 
@@ -926,26 +961,24 @@ def query_to_views(where):
 	if args.debug:
 		print("\nDEBUG: query_to_views " + str(where))
 	views = {} # dict of dicts, uniquely identified by uid, pid, and time
-	for bin_opt in BINARY_OPTIONS:
-		c.execute('''select uid, pid, time, %s from options %s''' % (bin_opt, where))
-		results = c.fetchall()
-		if len(results) == 0: # shortcut for bad where
-			break
-		for result in results:
-			unique_id = str(result[0]) + str(result[1]) + str(result[2])
-			if unique_id not in views:
-				views[unique_id] = {}
-			view = views[unique_id]
-			#if result[3] == "None" or result[3] is None: # TEST
-			#	print(bin_opt)
-			view[bin_opt] = result[3]
-			views[unique_id] = view
+	query = '''select uid, pid, time, %s from options %s''' % (', '.join(opt for opt in BINARY_OPTIONS), where)
+	c.execute(query)
+	results = c.fetchall()
+	for result in results:
+		unique_id = str(result[0]) + str(result[1]) + str(result[2])
+		if unique_id not in views:
+			views[unique_id] = {}
+		view = views[unique_id]
+		for i in range(len(BINARY_OPTIONS)):
+			view[BINARY_OPTIONS[i]] = result[i+3]
+		views[unique_id] = view
 
 	# add CAT options to views dict
 	if views != {}:
 		views = query_binarize_cat_to_dict(where, views)
 	if args.debug:
 		print("    query_to_views: " + str(len(views.keys())) + " results\n")
+		
 	return views
 
 
@@ -954,22 +987,24 @@ def query_to_views(where):
 # For each result, add to the given dict of bools each categorical option, sorted by key
 # Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
 def query_binarize_cat_to_dict(where, dictionary):
-
-	for cat_opt in CAT_OPTIONS.keys():
-		c.execute('''select uid, pid, time, %s from options %s''' % (cat_opt, where))
-		results = c.fetchall()
-		for result in results:
-			unique_id = str(result[0]) + str(result[1]) + str(result[2])
-			if unique_id not in dictionary:
-				dictionary[unique_id] = {}
-			dict_entry = dictionary[unique_id]
-			for opt in CAT_OPTIONS[cat_opt]:
-				if opt == result[3]:
+	query = '''select uid, pid, time, %s from options %s''' % (', '.join(cat for cat in CAT_KEYS), where)
+	c.execute(query)
+	results = c.fetchall()
+	for result in results:
+		unique_id = str(result[0]) + str(result[1]) + str(result[2])
+		if unique_id not in dictionary:
+			dictionary[unique_id] = {}
+		dict_entry = dictionary[unique_id]
+		for i in range(len(CAT_OPTIONS)):
+			optlist = CAT_OPTIONS[CAT_KEYS[i]]
+			for j in range(len(optlist)):
+				opt = optlist[j]
+				if opt == result[i+3]:
 					dict_entry[opt] = 1
 				else:
 					dict_entry[opt] = 0
-			dictionary[unique_id] = dict_entry
-
+		dictionary[unique_id] = dict_entry
+	
 	return dictionary
 
 
@@ -989,7 +1024,7 @@ def view_dict_to_list(view):
 	list = []
 	for bin_opt in BINARY_OPTIONS:
 		list.append(view[bin_opt])
-	for cat_opt in CAT_OPTIONS.keys():
+	for cat_opt in CAT_KEYS:
 		for opt in CAT_OPTIONS[cat_opt]:
 			list.append(view[opt])
 	return list
@@ -1002,7 +1037,7 @@ def list_to_view_dict(list):
 	view = {}
 	for bin_opt in BINARY_OPTIONS:
 		view[bin_opt] = list.pop(0)
-	for cat_opt in CAT_OPTIONS.keys():
+	for cat_opt in CAT_KEYS:
 		for opt in CAT_OPTIONS[cat_opt]:
 			view[opt] = list.pop(0)
 	return view
@@ -1241,16 +1276,17 @@ def io_mode(args):
 
 		if command == "process":
 			print("INFO: Processing data:")
-			print("INFO: adding puzzle_cat to options")
-			#add_puzzle_cat_col_to_options()
-			# print("INFO: Updating high scores...")
-			# add_is_highscore_cols("rprp_puzzle_ranks")
-			# print("INFO: Finding experts...")
-			# import_experts(recalculate=True)
-			# add_is_expert_col("rprp_puzzle_ranks")
-			#add_is_expert_col("options")
-			# print("TEST: adding hs to options")
-			# #add_is_highscore_cols("options") # DEPRECATED, work around
+			print("INFO: adding puzzle category labels")
+			add_puzzle_cat_col_to_ranks()
+			add_puzzle_cat_col_to_options()
+			print("INFO: Updating high scores...")
+			add_is_highscore_cols("rprp_puzzle_ranks")
+			print("INFO: Finding experts...")
+			import_experts(recalculate=True)
+			add_is_expert_col("rprp_puzzle_ranks")
+			add_is_expert_col("options")
+			#print("TEST: adding hs to options")
+			#add_is_highscore_cols("options") # DEPRECATED, work around
 			
 
 		if not single_query:
@@ -1303,16 +1339,16 @@ if args.debug:
 	print("DEBUG mode on")
 
 # TEST
-#import StringIO
-#pr = cProfile.Profile()
-#pr.enable()
-#s = StringIO.StringIO()
-#test2(args)
-#pr.disable()
-#sortby = 'cumulative'
-#ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-#ps.print_stats()
-#print(s.getvalue())
+import StringIO
+# pr = cProfile.Profile()
+# pr.enable()
+# s = StringIO.StringIO()
+# main_stats() # change to test function
+# pr.disable()
+# sortby = 'cumulative'
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# print(s.getvalue())
 #exit(1)
 
 if args.test:
