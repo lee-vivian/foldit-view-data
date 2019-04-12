@@ -201,7 +201,7 @@ def test(args):
 
 	print("printing experiment details...")
 	print_experiment_details()
-		
+
 	# print("freq test")
 	# # test apply_inverse_frequency_weighting()
 	# views = query_to_views("limit 1")
@@ -210,10 +210,10 @@ def test(args):
 	# 	weighted_view = apply_inverse_frequency_weighting(view)
 	# 	weighted_views[id] = weighted_view
 	# print(weighted_views)
-	
-		
+
+
 	print("Done.")
-	
+
 def cluster_plot(where, filename):
 	import scipy.cluster.hierarchy as shc
 	import matplotlib
@@ -228,12 +228,12 @@ def cluster_plot(where, filename):
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
 	plt.savefig(filename)
 	clusters_to_stats(data)
-	
+
 def clusters_to_stats(data):
 	print("cluster test")
 	from sklearn.cluster import AgglomerativeClustering
 	num_clusters = 5
-	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')  
+	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
 	for j in range(num_clusters):
@@ -322,21 +322,55 @@ def print_experiment_details():
 	print("experiment end datetime: " + str(end))
 
 	# num unique users
+	c.execute('''select count(distinct(uid)) from options;''')
+	result = c.fetchall()[0][0]
+	num_unique_users = result
+	print("num unique users: " + str(num_unique_users))
 
 	# num unique puzzles
+	c.execute('''select distinct(pid) from options;''')
+	results = c.fetchall()
+	num_unique_puzzles = len(results)
+	print("num unique puzzles: " + str(num_unique_puzzles))
 
-	# num unique puzzles per category
+	# num unique puzzles per category @TODO
+
+	puzzle_ids = [result[0] for result in results]
 
 	# num total data samples
+	c.execute('''select count(*) from options;''')
+	result = c.fetchall()[0][0]
+	total_data_samples_after_filtering = result
+	print("total data samples (post-filter): " + str(total_data_samples_after_filtering))
 
-	# num total samples before filtering
+	# num total samples before filtering @TODO
 
 	# mean/std dev of options samples per user
+	c.execute('''select count(uid) from options group by uid;''')
+	results = c.fetchall()
+	num_samples_per_user = [result[0] for result in results]
+	mean_spu = round(calculate_mean(num_samples_per_user), 2)
+	stddev_spu = round(calculate_stddev(num_samples_per_user, mean_spu), 2)
+	print("mean of options samples per user: " + str(mean_spu))
+	print("std dev of options samples per user: " + str(stddev_spu))
 
 	return
-	
-# ------------ END TEST BED -----------------------
 
+
+def calculate_mean(data):
+	return (sum(data) * 1.0) / len(data)
+
+
+def calculate_variance(data, mean):
+	return sum([(x - mean)**2 for x in data]) / (len(data) - 1)
+
+
+def calculate_stddev(data, mean):
+	variance = calculate_variance(data, mean)
+	return variance**0.5
+
+
+# ------------ END TEST BED -----------------------
 
 
 # ------------ ONE TIME FUNCTIONS -----------------
@@ -349,7 +383,7 @@ def get_valid_puzzle_categories():
 		if result[1] > 0:
 			puzzle_categories.append(result[0])
 	return puzzle_categories
-	
+
 def get_valid_gids():
 	c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
 	group_results = c.fetchall()
@@ -363,7 +397,7 @@ def get_valid_gids():
 def main_stats():
 	print("INFO: Beginning main stats tests")
 	# [DONE] Cluster by expert/non, report clustering statistics
-	
+
 		#centroid_stats(where="where is_expert == 0")
 		#centroid_stats(where="where is_expert == 1")
 
@@ -371,7 +405,7 @@ def main_stats():
 	print("Loading group and puzzle category data")
 	gids = get_valid_gids()
 	puzzle_categories = get_valid_puzzle_categories()
-	
+
 	# Cluster by high score / not, report clustering statistics
 	print("Calculating high score similarities")
 	all_highscores = []
@@ -391,7 +425,7 @@ def main_stats():
 		all_highscores += highscores_in_cat
 		centroid_name = "all_highscores"
 		centroid_stats(cluster=all_highscores, name=centroid_name)
-			
+
 	print("Calculating group and player similarities")
 	for gid in gids:
 		if gid == 0: # user not in a group
@@ -400,7 +434,7 @@ def main_stats():
 		user_results = c.fetchall()
 		users = [result[0] for result in user_results]
 		print("\INFO: group " + str(gid) + " has " + str(len(users)) + " users\n")
-		
+
 		lists_per_group = []
 		lists_per_group_per_cat = {}
 		for user in users:
@@ -428,10 +462,10 @@ def main_stats():
 		for cat in puzzle_categories:
 			centroid_name = str(cat) + str(gid)
 			centroid_stats(cluster=lists_per_group_per_cat[cat], name=centroid_name)
-		
-		
-	
-	
+
+
+
+
 	# EXPERTISE STATS
 	# Cluster by puzzle category, report clustering statistics
 	#for cat in puzzle_categories: # JUST PUZZLE CATEGORIES
@@ -692,7 +726,7 @@ def add_puzzle_cat_col_to_ranks():
 		c.execute('''update rprp_puzzle_ranks set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
 
 	conn.commit()
-	
+
 
 # ------------ WRITE TO CSV FUNCTIONS -----------------
 
@@ -736,7 +770,7 @@ def write_options_csv(where):
 	dict_data = options_csv_dict.values()
 	write_csv_from_dict(dict_data, "options_view.csv")
 	print("Created options_view csv")
-	
+
 def test_write_options_csv(where):
 	#cat_opts = []
 	#for cat in CAT_KEYS:
@@ -751,7 +785,7 @@ def test_write_options_csv(where):
 		writer.writerow(BINARY_OPTIONS)
 		for r in results:
 			writer.writerow(r)
-	
+
 
 
 # ------------ CLEAN DATABASE -----------------
@@ -1008,7 +1042,7 @@ def query_to_views(where):
 		views = query_binarize_cat_to_dict(where, views)
 	if args.debug:
 		print("    query_to_views: " + str(len(views.keys())) + " results\n")
-		
+
 	return views
 
 
@@ -1034,7 +1068,7 @@ def query_binarize_cat_to_dict(where, dictionary):
 				else:
 					dict_entry[opt] = 0
 		dictionary[unique_id] = dict_entry
-	
+
 	return dictionary
 
 
@@ -1181,7 +1215,7 @@ def density(cluster, dims=[-1]):
 	for i in dims:
 		stds.append(numpy.std([view[i] for view in cluster]))
 	return stds
-	
+
 
 
 # TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
@@ -1270,7 +1304,7 @@ def io_mode(args):
 
 		if command == "clean":
 			clean_db()
-			
+
 		if command == "main":
 			main_stats()
 
@@ -1317,7 +1351,7 @@ def io_mode(args):
 			add_is_expert_col("options")
 			#print("TEST: adding hs to options")
 			#add_is_highscore_cols("options") # DEPRECATED, work around
-			
+
 
 		if not single_query:
 			print("Enter command (h for help): ")
