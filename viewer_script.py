@@ -202,15 +202,14 @@ def test(args):
 	print("printing experiment details...")
 	print_experiment_details()
 
-	# print("freq test")
-	# # test apply_inverse_frequency_weighting()
-	# views = query_to_views("limit 1")
-	# weighted_views = dict()
-	# for id, view in views.iteritems():
-	# 	weighted_view = apply_inverse_frequency_weighting(view)
-	# 	weighted_views[id] = weighted_view
-	# print(weighted_views)
-
+	print("freq test")
+	# test apply_inverse_frequency_weighting()
+	views = query_to_views("limit 1")
+	weighted_views = dict()
+	for id, view in views.iteritems():
+		weighted_view = apply_inverse_frequency_weighting(view)
+		weighted_views[id] = weighted_view
+	print(weighted_views)
 
 	print("Done.")
 
