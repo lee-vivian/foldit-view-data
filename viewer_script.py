@@ -327,14 +327,18 @@ def print_experiment_details():
 	print("num unique users: " + str(num_unique_users))
 
 	# num unique puzzles
-	c.execute('''select distinct(pid) from options;''')
+	c.execute('''select count(distinct(pid)) from options;''')
 	results = c.fetchall()
-	num_unique_puzzles = len(results)
+	num_unique_puzzles = results[0][0]
 	print("num unique puzzles: " + str(num_unique_puzzles))
 
-	# num unique puzzles per category @TODO
-
-	puzzle_ids = [result[0] for result in results]
+	# num unique puzzles per category
+	valid_puzzle_cats = get_valid_puzzle_categories()
+	print("num unique puzzles per category")
+	for cat in valid_puzzle_cats:
+		c.execute('''select count(distinct(pid)) from options where puzzle_cat == "%s"''' % cat)
+		category_count = c.fetchall()[0][0]
+		print('''%s : %d''' % (cat, category_count))
 
 	# num total data samples
 	c.execute('''select count(*) from options;''')
