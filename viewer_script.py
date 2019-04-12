@@ -199,9 +199,6 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 
-	print("printing experiment details...")
-	print_experiment_details()
-
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
 	views = query_to_views("limit 1")
@@ -340,13 +337,23 @@ def print_experiment_details():
 		category_count = c.fetchall()[0][0]
 		print('''%s : %d''' % (cat, category_count))
 
+	# num total samples before filtering
+
+	if os.path.isfile('folditx.db'):
+		temp_conn = sqlite3.connect('folditx.db')
+		temp_c = temp_conn.cursor()
+		temp_c.execute('''select count(*) from options;''')
+		results = temp_c.fetchall()
+		total_data_samples_before_filtering = results[0][0]
+		print("total data samples (pre-filter): " + str(total_data_samples_before_filtering))
+	else:
+		print("ERR: Could not find database with name folditx.db")
+
 	# num total data samples
 	c.execute('''select count(*) from options;''')
 	result = c.fetchall()[0][0]
 	total_data_samples_after_filtering = result
 	print("total data samples (post-filter): " + str(total_data_samples_after_filtering))
-
-	# num total samples before filtering @TODO
 
 	# mean/std dev of options samples per user
 	c.execute('''select count(uid) from options group by uid;''')
@@ -1276,6 +1283,7 @@ def io_mode(args):
 			print("ent [option] - get entropy of option (or 'all')")
 			print("clean - clean the database of bad entries")
 			print("process - add new data to database, e.g. highscore info, is expert info")
+			print("stats - print experiment details")
 			print("main - run all main stats tests (will take a while)")
 			print("csv options - write options table to csv")
 
@@ -1355,6 +1363,8 @@ def io_mode(args):
 			#print("TEST: adding hs to options")
 			#add_is_highscore_cols("options") # DEPRECATED, work around
 
+		if command == "stats":
+			print_experiment_details()
 
 		if not single_query:
 			print("Enter command (h for help): ")
