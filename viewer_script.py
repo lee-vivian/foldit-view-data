@@ -198,15 +198,18 @@ def test2(args):
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
+
+	print("printing experiment details...")
+	print_experiment_details()
 		
-	print("freq test")
-	# test apply_inverse_frequency_weighting()
-	views = query_to_views("limit 1")
-	weighted_views = dict()
-	for id, view in views.iteritems():
-		weighted_view = apply_inverse_frequency_weighting(view)
-		weighted_views[id] = weighted_view
-	print(weighted_views)
+	# print("freq test")
+	# # test apply_inverse_frequency_weighting()
+	# views = query_to_views("limit 1")
+	# weighted_views = dict()
+	# for id, view in views.iteritems():
+	# 	weighted_view = apply_inverse_frequency_weighting(view)
+	# 	weighted_views[id] = weighted_view
+	# print(weighted_views)
 	
 		
 	print("Done.")
@@ -304,6 +307,33 @@ def centroid_stats(where="", cluster=None, name=""):
 				dimensions.append(opt)
 		for i in range(len(dimensions)):
 			writer.writerow([dimensions[i], c[i], d[i]])
+
+
+def print_experiment_details():
+
+	from datetime import datetime as dt
+
+	# print start and end dates of the experiment
+	c.execute('''select min(time), max(time) from options;''')
+	result = c.fetchall()[0]
+	start = dt.utcfromtimestamp(result[0])
+	end = dt.utcfromtimestamp(result[1])
+	print("experiment start datetime: " + str(start))
+	print("experiment end datetime: " + str(end))
+
+	# num unique users
+
+	# num unique puzzles
+
+	# num unique puzzles per category
+
+	# num total data samples
+
+	# num total samples before filtering
+
+	# mean/std dev of options samples per user
+
+	return
 	
 # ------------ END TEST BED -----------------------
 
