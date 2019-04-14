@@ -11,6 +11,7 @@ except NameError: pass
 try: from StringIO import StringIO
 except ImportError: from io import StringIO
 
+GROUP_FOLDER = "groupuser_stats"
 ENTROPIES_FILE = "entropies.csv"
 FREQUENCIES_FILE = "frequencies.csv"
 EXPERTS_FILE = "experts.csv"
@@ -119,6 +120,13 @@ CAT_OPTIONS = {
 	"view_options__sidechain_mode": ["Don't Show (Fast)", "Show All (Slow)", "Show Stubs"]
 }
 
+ALL_USED_OPTIONS = [opt for opt in BINARY_OPTIONS]
+for cat_opt in CAT_KEYS:
+	for opt in CAT_OPTIONS[cat_opt]:
+		ALL_USED_OPTIONS.append(opt)
+		
+TOTAL_DIMS = len(ALL_USED_OPTIONS)
+				
 FULL_OPTIONS_LIST = [
 	"advanced_mode",
 	"autoshow_chat__global",
@@ -287,15 +295,16 @@ def centroid_stats(where="", cluster=None, name=""):
 			cluster.append(view_dict_to_list(view))
 		print("Analyzing this centroid: " + where)
 	unicode_clean(cluster)
-	print("Density:")
+	data_count = str(len(cluster))
+	print("Density (" + data_count + "):")
 	d = density(cluster)
 	print(d)
-	print("Centroid:")
+	print("Centroid (" + data_count + "):")
 	c = centroid(cluster)
 	print(c)
 	if name == "":
 		name = where
-	with open('centroid_stats_' + name + '.csv', 'w') as c_file:
+	with open(name + '.csv', 'w') as c_file:
 		writer = csv.writer(c_file)
 		writer.writerow(["dim", "M", "std"])
 		dimensions = [opt for opt in BINARY_OPTIONS]
@@ -328,20 +337,8 @@ def get_valid_gids():
 		if result[1] > MIN_SAMPLES_PER_GROUP:
 			groups.append(result[0])
 	return groups
-
-# Calculate and print full report of interesting stats
-def main_stats():
-	print("INFO: Beginning main stats tests")
-	# [DONE] Cluster by expert/non, report clustering statistics
 	
-		#centroid_stats(where="where is_expert == 0")
-		#centroid_stats(where="where is_expert == 1")
-
-	# within group and within player densities
-	print("Loading group and puzzle category data")
-	gids = get_valid_gids()
-	puzzle_categories = get_valid_puzzle_categories()
-	
+def highscore_similarities(puzzle_categories):
 	# Cluster by high score / not, report clustering statistics
 	print("Calculating high score similarities")
 	all_highscores = []
@@ -361,46 +358,140 @@ def main_stats():
 		all_highscores += highscores_in_cat
 		centroid_name = "all_highscores"
 		centroid_stats(cluster=all_highscores, name=centroid_name)
-			
+
+def group_similarities(gids, puzzle_categories):
 	print("Calculating group and player similarities")
+	gid_counter = [0, len(gids)]
 	for gid in gids:
 		if gid == 0: # user not in a group
 			continue
 		c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
 		user_results = c.fetchall()
 		users = [result[0] for result in user_results]
-		print("\INFO: group " + str(gid) + " has " + str(len(users)) + " users\n")
-		
+		print("\n-------------------------")
+		gid_counter[0] += 1
+		print("INFO: Processing group " + str(gid_counter[0]) + " / " + str(gid_counter[1]))
+		print("INFO: group " + str(gid) + " has " + str(len(users)) + " users")
+		print("-------------------------\n")
 		lists_per_group = []
 		lists_per_group_per_cat = {}
 		for user in users:
-			print('!',end='')
-			sys.stdout.flush()
 			lists_per_user = []
 			for cat in puzzle_categories:
-				print('.',end='')
+				print(".", end='')
 				sys.stdout.flush()
 				if cat not in lists_per_group_per_cat:
 					lists_per_group_per_cat[cat] = []
 				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and puzzle_cat = \"%s\" ''' % (user, cat))
 				lists_per_user_per_cat = []
-				for view in views_per_user_per_cat:
+				for idkey, view in views_per_user_per_cat.iteritems():
 					lists_per_user_per_cat.append(view_dict_to_list(view))
-				centroid_name = str(cat) + str(user)
-				centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
-				lists_per_user += lists_per_user_per_cat
-				lists_per_group_per_cat[cat] += lists_per_user_per_cat
-			centroid_name = str(user)
-			centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
+				if lists_per_user_per_cat != []:
+					print('\n')
+					centroid_name = "u_" + str(user) + "_c_" + str(cat) + "_count_" + str(len(lists_per_user_per_cat))
+					centroid_stats(cluster=lists_per_user_per_cat, name=os.path.join(GROUP_FOLDER, centroid_name))
+					lists_per_user += lists_per_user_per_cat
+					lists_per_group_per_cat[cat] += lists_per_user_per_cat
+			centroid_name = "u_" + str(user) + "_count_" + str(len(lists_per_user))
+			centroid_stats(cluster=lists_per_user, name=os.path.join(GROUP_FOLDER, centroid_name))
 			lists_per_group += lists_per_user
-		centroid_name = str(cat) + str(user)
-		centroid_stats(cluster=lists_per_user_per_cat, name=centroid_name)
+		centroid_name = "g_" + str(gid) + "_count_" + str(len(lists_per_group))
+		centroid_stats(cluster=lists_per_group, name=os.path.join(GROUP_FOLDER, centroid_name))
 		for cat in puzzle_categories:
-			centroid_name = str(cat) + str(gid)
-			centroid_stats(cluster=lists_per_group_per_cat[cat], name=centroid_name)
+			centroid_name = "g_" + str(gid) + "_c_" + str(cat) + "_count_" + str(len(lists_per_group_per_cat[cat]))
+			centroid_stats(cluster=lists_per_group_per_cat[cat], name=os.path.join(GROUP_FOLDER, centroid_name))
 		
+def incremental_similarity_averages(files_and_counts, user=False):
+	# average the standard deviations across all files
+	inc_avgs = [0] * TOTAL_DIMS
+	inc_weight = 0
+	for name, count in files_and_counts.iteritems():
+		prefix = "g_"
+		if user:
+			prefix = "u_"
+		csvfile = prefix + str(name) + "_count_" + str(count) + ".csv"
+		fullpath = os.path.join(GROUP_FOLDER, csvfile)
+		sum = map(lambda x: x * inc_weight, inc_avgs)
+		with open(fullpath, 'r') as f:
+			reader = csv.reader(f)
+			next(reader) # skip header
+			i = 0
+			sanity_check = [inc_avgs[0], inc_weight] # TODO remove
+			for row in reader:
+				sum[i] += (count * float(row[2])) # std		
+				if i == 0: # TODO remove block
+					sanity_check.append(float(row[2]))
+					sanity_check.append(count)
+					print("Sanity check: ")
+					print(sanity_check)
+					print(((sanity_check[0] * sanity_check[1]) + (sanity_check[2] * sanity_check[3])) / (sanity_check[1] + sanity_check[3]))
+				i += 1
+
+			if i != len(sum): # assert
+				print("ERR: assertion failed, file was " + str(i) + " rows long, there are " + str(len(sum)) + " total dimensions.")
+				exit(1)
+			inc_weight += count
+			for j in range(len(sum)):
+				sum[j] /= (inc_weight)
+			inc_avgs = sum
+			print("Sanity check: " + str(inc_avgs[9]))
+		return # TODO delete this return once the sanity checks work
 		
+	prefix = "group"
+	if user:
+		prefix = "user"
+	with open(prefix + '_similarities.csv', 'w') as g:
+		writer = csv.writer(g)
+		writer.writerow(['dim','average_std'])
+		for i in range(len(inc_avgs)):
+			writer.writerow([ALL_USED_OPTIONS[i], inc_avgs[i]])
+		
+def groupuser_analysis():
+	groups_and_counts = {}
+	users_and_counts = {}
+	for root, dir, files in os.walk("."):
+		for file in files:
+			if file.endswith(".csv"):
+				if file.startswith("g_"):
+					if "_c_" not in file: # category
+						m = re.search('_count_(\d*)\.csv$', file)
+						count = int(m.group(1))
+						m = re.search('^g_(\d*)_', file)
+						gid = m.group(1)
+						groups_and_counts[gid] = count
+				elif file.startswith("u_"):
+					if "_c_" not in file: # category
+						m = re.search('_count_(\d*)\.csv$', file)
+						count = int(m.group(1))
+						m = re.search('^u_([a-zA-Z0-9]*)_', file)
+						uid = m.group(1)
+						users_and_counts[uid] = count
 	
+						
+	incremental_similarity_averages(groups_and_counts)
+	incremental_similarity_averages(users_and_counts, user=True)
+	
+
+	# TODO, repeat but for individual cats
+	
+		
+# Calculate and print full report of interesting stats
+def main_stats():
+	print("INFO: Beginning main stats tests")
+	# [DONE] Cluster by expert/non, report clustering statistics
+	
+		#centroid_stats(where="where is_expert == 0")
+		#centroid_stats(where="where is_expert == 1")
+
+	# within group and within player densities
+	print("Loading group and puzzle category data")
+	#gids = get_valid_gids()
+	#puzzle_categories = get_valid_puzzle_categories()
+	
+	#highscore_similarities(puzzle_categories)
+	#group_similarities(gids, puzzle_categories)
+	
+	groupuser_analysis()
 	
 	# EXPERTISE STATS
 	# Cluster by puzzle category, report clustering statistics
@@ -1310,7 +1401,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, numpy, sqlite3, datetime, os.path, cProfile, pstats
+	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats
 	# import scikit, pandas, and/or oranges?
 
 	global conn, is_db_clean
