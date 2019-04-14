@@ -206,7 +206,7 @@ def test2(args):
 def test(args):
 	print("Beginning Tests...")
 	# Tests go here
-		
+
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
 	views = query_to_views("limit 1")
@@ -215,10 +215,9 @@ def test(args):
 		weighted_view = apply_inverse_frequency_weighting(view)
 		weighted_views[id] = weighted_view
 	print(weighted_views)
-	
-		
+
 	print("Done.")
-	
+
 def cluster_plot(where, filename):
 	import scipy.cluster.hierarchy as shc
 	import matplotlib
@@ -233,12 +232,12 @@ def cluster_plot(where, filename):
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
 	plt.savefig(filename)
 	clusters_to_stats(data)
-	
+
 def clusters_to_stats(data):
 	print("cluster test")
 	from sklearn.cluster import AgglomerativeClustering
 	num_clusters = 5
-	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')  
+	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
 	for j in range(num_clusters):
@@ -313,9 +312,84 @@ def centroid_stats(where="", cluster=None, name=""):
 				dimensions.append(opt)
 		for i in range(len(dimensions)):
 			writer.writerow([dimensions[i], c[i], d[i]])
-	
-# ------------ END TEST BED -----------------------
 
+
+def print_experiment_details():
+
+	from datetime import datetime as dt
+
+	# print start and end dates of the experiment
+	c.execute('''select min(time), max(time) from options;''')
+	result = c.fetchall()[0]
+	start = dt.utcfromtimestamp(result[0])
+	end = dt.utcfromtimestamp(result[1])
+	print("experiment start datetime: " + str(start))
+	print("experiment end datetime: " + str(end))
+
+	# num unique users
+	c.execute('''select count(distinct(uid)) from options;''')
+	result = c.fetchall()[0][0]
+	num_unique_users = result
+	print("num unique users: " + str(num_unique_users))
+
+	# num unique puzzles
+	c.execute('''select count(distinct(pid)) from options;''')
+	results = c.fetchall()
+	num_unique_puzzles = results[0][0]
+	print("num unique puzzles: " + str(num_unique_puzzles))
+
+	# num unique puzzles per category
+	valid_puzzle_cats = get_valid_puzzle_categories()
+	print("num unique puzzles per category")
+	for cat in valid_puzzle_cats:
+		c.execute('''select count(distinct(pid)) from options where puzzle_cat == "%s"''' % cat)
+		category_count = c.fetchall()[0][0]
+		print('''%s : %d''' % (cat, category_count))
+
+	# num total samples before filtering
+
+	if os.path.isfile('folditx.db'):
+		temp_conn = sqlite3.connect('folditx.db')
+		temp_c = temp_conn.cursor()
+		temp_c.execute('''select count(*) from options;''')
+		results = temp_c.fetchall()
+		total_data_samples_before_filtering = results[0][0]
+		print("total data samples (pre-filter): " + str(total_data_samples_before_filtering))
+	else:
+		print("ERR: Could not find database with name folditx.db")
+
+	# num total data samples
+	c.execute('''select count(*) from options;''')
+	result = c.fetchall()[0][0]
+	total_data_samples_after_filtering = result
+	print("total data samples (post-filter): " + str(total_data_samples_after_filtering))
+
+	# mean/std dev of options samples per user
+	c.execute('''select count(uid) from options group by uid;''')
+	results = c.fetchall()
+	num_samples_per_user = [result[0] for result in results]
+	mean_spu = round(calculate_mean(num_samples_per_user), 2)
+	stddev_spu = round(calculate_stddev(num_samples_per_user, mean_spu), 2)
+	print("mean of options samples per user: " + str(mean_spu))
+	print("std dev of options samples per user: " + str(stddev_spu))
+
+	return
+
+
+def calculate_mean(data):
+	return (sum(data) * 1.0) / len(data)
+
+
+def calculate_variance(data, mean):
+	return sum([(x - mean)**2 for x in data]) / (len(data) - 1)
+
+
+def calculate_stddev(data, mean):
+	variance = calculate_variance(data, mean)
+	return variance**0.5
+
+
+# ------------ END TEST BED -----------------------
 
 
 # ------------ ONE TIME FUNCTIONS -----------------
@@ -328,7 +402,7 @@ def get_valid_puzzle_categories():
 		if result[1] > 0:
 			puzzle_categories.append(result[0])
 	return puzzle_categories
-	
+
 def get_valid_gids():
 	c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
 	group_results = c.fetchall()
@@ -358,6 +432,7 @@ def highscore_similarities(puzzle_categories):
 		all_highscores += highscores_in_cat
 		centroid_name = "all_highscores"
 		centroid_stats(cluster=all_highscores, name=centroid_name)
+	
 
 def group_similarities(gids, puzzle_categories):
 	print("Calculating group and player similarities")
@@ -400,7 +475,7 @@ def group_similarities(gids, puzzle_categories):
 		for cat in puzzle_categories:
 			centroid_name = "g_" + str(gid) + "_c_" + str(cat) + "_count_" + str(len(lists_per_group_per_cat[cat]))
 			centroid_stats(cluster=lists_per_group_per_cat[cat], name=os.path.join(GROUP_FOLDER, centroid_name))
-		
+	
 def incremental_similarity_averages(files_and_counts, user=False):
 	# average the standard deviations across all files
 	inc_avgs = [0] * TOTAL_DIMS
@@ -477,6 +552,7 @@ def groupuser_analysis():
 		
 # Calculate and print full report of interesting stats
 def main_stats():
+
 	print("INFO: Beginning main stats tests")
 	# [DONE] Cluster by expert/non, report clustering statistics
 	
@@ -753,7 +829,7 @@ def add_puzzle_cat_col_to_ranks():
 		c.execute('''update rprp_puzzle_ranks set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
 
 	conn.commit()
-	
+
 
 # ------------ WRITE TO CSV FUNCTIONS -----------------
 
@@ -797,7 +873,7 @@ def write_options_csv(where):
 	dict_data = options_csv_dict.values()
 	write_csv_from_dict(dict_data, "options_view.csv")
 	print("Created options_view csv")
-	
+
 def test_write_options_csv(where):
 	#cat_opts = []
 	#for cat in CAT_KEYS:
@@ -812,7 +888,7 @@ def test_write_options_csv(where):
 		writer.writerow(BINARY_OPTIONS)
 		for r in results:
 			writer.writerow(r)
-	
+
 
 
 # ------------ CLEAN DATABASE -----------------
@@ -1069,7 +1145,7 @@ def query_to_views(where):
 		views = query_binarize_cat_to_dict(where, views)
 	if args.debug:
 		print("    query_to_views: " + str(len(views.keys())) + " results\n")
-		
+
 	return views
 
 
@@ -1095,7 +1171,7 @@ def query_binarize_cat_to_dict(where, dictionary):
 				else:
 					dict_entry[opt] = 0
 		dictionary[unique_id] = dict_entry
-	
+
 	return dictionary
 
 
@@ -1242,7 +1318,7 @@ def density(cluster, dims=[-1]):
 	for i in dims:
 		stds.append(numpy.std([view[i] for view in cluster]))
 	return stds
-	
+
 
 
 # TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
@@ -1300,6 +1376,7 @@ def io_mode(args):
 			print("ent [option] - get entropy of option (or 'all')")
 			print("clean - clean the database of bad entries")
 			print("process - add new data to database, e.g. highscore info, is expert info")
+			print("stats - print experiment details")
 			print("main - run all main stats tests (will take a while)")
 			print("csv options - write options table to csv")
 
@@ -1331,7 +1408,7 @@ def io_mode(args):
 
 		if command == "clean":
 			clean_db()
-			
+
 		if command == "main":
 			main_stats()
 
@@ -1378,7 +1455,9 @@ def io_mode(args):
 			add_is_expert_col("options")
 			#print("TEST: adding hs to options")
 			#add_is_highscore_cols("options") # DEPRECATED, work around
-			
+
+		if command == "stats":
+			print_experiment_details()
 
 		if not single_query:
 			print("Enter command (h for help): ")
