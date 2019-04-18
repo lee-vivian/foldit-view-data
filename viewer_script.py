@@ -510,7 +510,6 @@ def incremental_similarity_averages(files_and_counts, user=False):
 				sum[j] /= (inc_weight)
 			inc_avgs = sum
 			print("Sanity check: " + str(inc_avgs[0]))
-		return # TODO delete this return once the sanity checks work
 		
 	prefix = "group"
 	if user:
