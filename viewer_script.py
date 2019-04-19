@@ -491,17 +491,9 @@ def incremental_similarity_averages(files_and_counts, user=False):
 			reader = csv.reader(f)
 			next(reader) # skip header
 			i = 0
-			sanity_check = [inc_avgs[0], inc_weight] # TODO remove
 			for row in reader:
 				sum[i] += (count * float(row[2])) # std		
-				if i == 0: # TODO remove block
-					sanity_check.append(float(row[2]))
-					sanity_check.append(count)
-					print("Sanity check: ")
-					print(sanity_check)
-					print(((sanity_check[0] * sanity_check[1]) + (sanity_check[2] * sanity_check[3])) / (sanity_check[1] + sanity_check[3]))
 				i += 1
-
 			if i != len(sum): # assert
 				print("ERR: assertion failed, file was " + str(i) + " rows long, there are " + str(len(sum)) + " total dimensions.")
 				exit(1)
@@ -509,7 +501,6 @@ def incremental_similarity_averages(files_and_counts, user=False):
 			for j in range(len(sum)):
 				sum[j] /= (inc_weight)
 			inc_avgs = sum
-			print("Sanity check: " + str(inc_avgs[0]))
 		
 	prefix = "group"
 	if user:
