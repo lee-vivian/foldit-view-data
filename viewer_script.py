@@ -199,13 +199,6 @@ FULL_OPTIONS_LIST = [
 def test2(args):
 	#print("cluster test")
 	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
-	pass
-
-
-# place to run tests
-def test(args):
-	print("Beginning Tests...")
-	# Tests go here
 
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
@@ -215,8 +208,52 @@ def test(args):
 		weighted_view = apply_inverse_frequency_weighting(view)
 		weighted_views[id] = weighted_view
 	print(weighted_views)
+	
+	pass
+
+
+# place to run tests
+def test(args):
+	print("Beginning Tests...")
+	# Tests go here
+	#cluster_plot("where is_expert == 1", "dendro_expert_unique.png")
+	#cluster_plot("", "dendro_all_unique.png")
+	
+	views = query_to_views("")
+	data = []
+	for (id,view) in iteritems(views):
+		data.append((view_dict_to_list(view)))
+	unicode_clean(data)
+	count_view_popularity(data, "view_frequencies.csv")
 
 	print("Done.")
+	
+def count_view_popularity(data, file):
+	dataset = defaultdict(int)
+	for view in data:
+		key = ""
+		for ele in view:
+			if ele is 1 or ele is 0:
+				key += str(ele)
+		dataset[key] += 1
+	sorted_dict = sorted(dataset.items(), key=operator.itemgetter(1), reverse=True)
+	with open(file, 'w') as f:
+		writer = csv.writer(f)
+		header = ["count"]
+		for opt in ALL_USED_OPTIONS:
+			header.append(opt)
+		writer.writerow(header)
+		for key, value in sorted_dict:
+			row = [value]
+			for i in range(len(key)):
+				row.append(key[i])
+			writer.writerow(row)
+	
+def list_to_set(data):
+	dataset = set([])
+	for d in data:
+		dataset.add(tuple(d))
+	return dataset
 
 def cluster_plot(where, filename):
 	import scipy.cluster.hierarchy as shc
@@ -227,8 +264,14 @@ def cluster_plot(where, filename):
 	views = query_to_views(where)
 	data = []
 	for (id,view) in iteritems(views):
-		data.append(view_dict_to_list(view))
+		data.append((view_dict_to_list(view)))
 	unicode_clean(data)
+	if args.debug:
+		print("Total views: " + str(len(data)))
+	data = list_to_set(data) # convert to set to remove duplicates
+	if args.debug:
+		print("Unique views: " + str(len(data)))
+	data = list(data) # convert back because we need as list
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
 	plt.savefig(filename)
 	clusters_to_stats(data)
@@ -236,7 +279,7 @@ def cluster_plot(where, filename):
 def clusters_to_stats(data):
 	print("cluster test")
 	from sklearn.cluster import AgglomerativeClustering
-	num_clusters = 5
+	num_clusters = 3
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
