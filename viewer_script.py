@@ -63,6 +63,8 @@ ENTROPY_DICT = {}
 OPT_FREQ_DICT = {}
 EXPERTS = []
 
+META_CATEGORIES = ["Design", "Prediction", "Electron Density", "Hand-Folding"]
+
 # For these options, there is a lot of missing data - replace missing with default value
 MISSING_DEFAULTS = {
 	"puzzle_dialog__show_beginner": 0,
@@ -553,6 +555,42 @@ def incremental_similarity_averages(files_and_counts, user=False):
 		writer.writerow(['dim','average_std'])
 		for i in range(len(inc_avgs)):
 			writer.writerow([ALL_USED_OPTIONS[i], inc_avgs[i]])
+			
+def incremental_similarity_averages_by_cat(files_and_counts, user=False):
+	for metacat in META_CATEGORIES:
+		# average the standard deviations across all files
+		inc_avgs = [0] * TOTAL_DIMS
+		inc_weight = 0
+		for name, count in files_and_counts.iteritems():
+			prefix = "g_"
+			if user:
+				prefix = "u_"
+			csvfile = prefix + str(name) + "_c_" + metacat + "_count_" + str(count) + ".csv"
+			fullpath = os.path.join(GROUP_FOLDER, csvfile)
+			sum = map(lambda x: x * inc_weight, inc_avgs)
+			with open(fullpath, 'r') as f:
+				reader = csv.reader(f)
+				next(reader) # skip header
+				i = 0
+				for row in reader:
+					sum[i] += (count * float(row[2])) # std		
+					i += 1
+				if i != len(sum): # assert
+					print("ERR: assertion failed, file was " + str(i) + " rows long, there are " + str(len(sum)) + " total dimensions.")
+					exit(1)
+				inc_weight += count
+				for j in range(len(sum)):
+					sum[j] /= (inc_weight)
+				inc_avgs = sum
+			
+		prefix = "group"
+		if user:
+			prefix = "user"
+		with open(prefix + '_' + metacat + '_similarities.csv', 'w') as g:
+			writer = csv.writer(g)
+			writer.writerow(['dim','average_std'])
+			for i in range(len(inc_avgs)):
+				writer.writerow([ALL_USED_OPTIONS[i], inc_avgs[i]])
 		
 def groupuser_analysis():
 	groups_and_counts = {}
@@ -578,41 +616,77 @@ def groupuser_analysis():
 						
 	incremental_similarity_averages(groups_and_counts)
 	incremental_similarity_averages(users_and_counts, user=True)
+	incremental_similarity_averages_by_cat(groups_and_counts)
+	incremental_similarity_averages_by_cat(users_and_counts, user=True)
 	
-
-	# TODO, repeat but for individual cats
 	
 		
 # Calculate and print full report of interesting stats
 def main_stats():
-
 	print("INFO: Beginning main stats tests")
-	# [DONE] Cluster by expert/non, report clustering statistics
 	
-		#centroid_stats(where="where is_expert == 0")
-		#centroid_stats(where="where is_expert == 1")
-
-	# within group and within player densities
-	print("Loading group and puzzle category data")
-	#gids = get_valid_gids()
-	#puzzle_categories = get_valid_puzzle_categories()
+	"""
+	MAIN STATS
 	
-	#highscore_similarities(puzzle_categories)
-	#group_similarities(gids, puzzle_categories)
+	Metacategories (META_CATEGORIES):
+		1. Design
+		2. Prediction
+		3. Electron Density (subcategory of Prediction)
+		4. Hand Folding (subcategory of Prediction)
 	
+	Overall and per-metacategory: Experts vs Novices
+	
+	Groups/Users
+		1. How much variance is there within a group?
+			a. Overall and per-metacategory
+		2. How much variance is there within a user?
+			a. Overall and per-metacategory
+			
+	Clustering
+		1. Run clustering algorithm, described
+		2. Describe the centroids of each cluster, interpret
+		3. In what clusters do the most modal views fall under?
+			a. Overall and per-metacategory
+		4. Group/user details
+			a. Within each group/user, how many samples fall in each cluster?
+			b. How many clusters does the group spread out over?
+	
+	Final questions:
+		1. What are the popular settings?
+		2. What does this mean beyond Foldit?	
+	"""
+	
+	print("INFO: Expertise analysis")
+	# Overall and per-metacategory Experts vs Novices
+	centroid_stats(where="where is_expert == 0", "OverallNovice")
+	centroid_stats(where="where is_expert == 1", "OverallExpert")
+	for mc in META_CATEGORIES:
+		centroid_stats(where="where is_expert == 0 and puzzle_cat == " + mc, mc + "Novice")
+		centroid_stats(where="where is_expert == 1 and puzzle_cat == " + mc, mc + "Expert")
+	
+	# Groups/Users			
+	print("INFO: Loading group and puzzle category data")
+	gids = get_valid_gids()
+	puzzle_categories = get_valid_puzzle_categories()
+	print("INFO: Highscore analysis")
+	highscore_similarities(puzzle_categories)
+	print("INFO: Group analysis")
+	group_similarities(gids, puzzle_categories)
+	print("INFO: User analysis")
 	groupuser_analysis()
+			
+	# Clustering
+		# 1. Run clustering algorithm, described
+		# 2. Describe the centroids of each cluster, interpret
+		# 3. In what clusters do the most modal views fall under?
+			# a. Overall and per-metacategory
+		# 4. Group/user details
+			# a. Within each group/user, how many samples fall in each cluster?
+			# b. How many clusters does the group spread out over?
 	
-	# EXPERTISE STATS
-	# Cluster by puzzle category, report clustering statistics
-	#for cat in puzzle_categories: # JUST PUZZLE CATEGORIES
-	#	print("centroid test " + str(cat))
-	#	centroid_stats('''where puzzle_cat == \"%s\" ''' % cat)
-	#for cat in puzzle_categories: # PUZZLE CATEGORIES + EXPERTS
-	#	print("centroid test expert " + str(cat))
-	#	centroid_stats('''where puzzle_cat == \"%s\" and is_expert == 1''' % cat)
-	#for cat in PIDS_BY_CAT.keys(): # PUZZLE CATEGORIES + HIGHSCORE
-	#	print("centroid test hs " + str(cat))
-	#	centroid_stats('''where puzzle_cat == \"%s\" and is_highscore == 1''' % cat)
+	# Final questions:
+		# 1. What are the popular settings?
+		# 2. What does this mean beyond Foldit?	
 
 
 
