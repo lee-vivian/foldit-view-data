@@ -870,7 +870,7 @@ def add_is_expert_col(table):
 # Add puzzle_cat col to options table
 def add_puzzle_cat_col_to_options():
 	try:
-		c.execute('''ALTER TABLE options ADD puzzle_cat TEXT''')
+		c.execute('''ALTER TABLE options ADD puzzle_cat TEXT DEFAULT ""''')
 		print('''INFO: Created puzzle_cat column in options. Calculating puzzle_cat ...''')
 
 	except Exception as e:
@@ -886,7 +886,7 @@ def add_puzzle_cat_col_to_options():
 # Add puzzle_cat col to rprp_puzzle_ranks table
 def add_puzzle_cat_col_to_ranks():
 	try:
-		c.execute('''ALTER TABLE rprp_puzzle_ranks ADD puzzle_cat TEXT''')
+		c.execute('''ALTER TABLE rprp_puzzle_ranks ADD puzzle_cat TEXT DEFAULT ""''')
 		print('''INFO: Created puzzle_cat column in rprp_puzzle_ranks. Calculating puzzle_cat ...''')
 
 	except Exception as e:
