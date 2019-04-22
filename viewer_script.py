@@ -615,11 +615,11 @@ def main_stats():
 	
 	print("INFO: Expertise analysis")
 	# Overall and per-metacategory Experts vs Novices
-	centroid_stats(where="where is_expert == 0", "OverallNovice")
-	centroid_stats(where="where is_expert == 1", "OverallExpert")
+	centroid_stats(where="where is_expert == 0", name="OverallNovice")
+	centroid_stats(where="where is_expert == 1", name="OverallExpert")
 	for mc in META_CATEGORIES:
-		centroid_stats(where="where is_expert == 0 and puzzle_cat == " + mc, mc + "Novice")
-		centroid_stats(where="where is_expert == 1 and puzzle_cat == " + mc, mc + "Expert")
+		centroid_stats(where='''where is_expert == 0 and puzzle_cat == "%s"''' % mc, name=mc + "Novice")
+		centroid_stats(where='''where is_expert == 1 and puzzle_cat == "%s"''' % mc, name=mc + "Expert")
 	
 	# Groups/Users			
 	print("INFO: Loading group and puzzle category data")
