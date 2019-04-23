@@ -220,6 +220,7 @@ def test(args):
 	# Tests go here
 	#cluster_plot("where is_expert == 1", "dendro_expert_unique.png")
 	
+	get_valid_puzzle_categories()
 
 	# data = []
 	# for (id,view) in iteritems(views):
@@ -454,14 +455,16 @@ def calculate_stddev(data, mean):
 def get_valid_puzzle_categories():
 	c.execute('''select puzzle_cat, count(puzzle_cat) from options group by puzzle_cat;''')
 	puzzle_category_results = c.fetchall()
-	puzzle_categories = []
+	puzzle_categories = defaultdict(int)
 	for result in puzzle_category_results:
 		if result[1] > 0:
-			puzzle_categories.append(result[0])
-	print("TEST: puzzle categories are")
-	print(puzzle_categories)
-	# TODO separate by commas, get only the independent categories
-	return puzzle_categories
+			cats = result[0].split(', ')
+			for cat in cats:
+				puzzle_categories[cat] += result[1]
+	if args.debug:
+		print("DEBUG: puzzle category sample count:")
+		print(puzzle_categories)
+	return puzzle_categories.keys()
 
 def get_valid_gids():
 	c.execute('''select gid, count(gid) from rprp_puzzle_ranks group by gid;''')
@@ -1649,12 +1652,15 @@ def io_mode(args):
 			print("INFO: adding puzzle category labels")
 			add_puzzle_cat_col_to_ranks()
 			add_puzzle_cat_col_to_options()
+			return # TODO remove
 			print("INFO: Updating high scores...")
 			add_is_highscore_cols("rprp_puzzle_ranks")
 			print("INFO: Finding experts...")
 			import_experts(recalculate=True)
 			add_is_expert_col("rprp_puzzle_ranks")
 			add_is_expert_col("options")
+			
+			
 			#print("TEST: adding hs to options")
 			#add_is_highscore_cols("options") # DEPRECATED, work around
 
