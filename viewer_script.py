@@ -1651,7 +1651,6 @@ def io_mode(args):
 			print("INFO: adding puzzle category labels")
 			add_puzzle_cat_col_to_ranks()
 			add_puzzle_cat_col_to_options()
-			return # TODO remove
 			print("INFO: Updating high scores...")
 			add_is_highscore_cols("rprp_puzzle_ranks")
 			print("INFO: Finding experts...")
