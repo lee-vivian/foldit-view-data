@@ -219,8 +219,7 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 	#cluster_plot("where is_expert == 1", "dendro_expert_unique.png")
-	
-	get_valid_puzzle_categories()
+	#get_valid_puzzle_categories()
 
 	# data = []
 	# for (id,view) in iteritems(views):
@@ -400,7 +399,7 @@ def print_experiment_details():
 	print("num unique puzzles per category")
 	for cat in valid_puzzle_cats:
 		search_cat = '%' + cat + '%'
-		c.execute('''select count(distinct(pid)) from options where instr(puzzle_cat, "%s")''' % search_cat)
+		c.execute('''select count(distinct(pid)) from options where instr(puzzle_cat, \"%s\")''' % search_cat)
 		category_count = c.fetchall()[0][0]
 		print('''%s : %d''' % (cat, category_count))
 
@@ -481,7 +480,7 @@ def highscore_similarities(puzzle_categories):
 	all_highscores = []
 	for cat in puzzle_categories:
 		search_cat = '%' + cat + '%'
-		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and instr(puzzle_cat, "%s"); ''' % search_cat)
+		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and instr(puzzle_cat, \"%s\"); ''' % search_cat)
 		highscore_results = c.fetchall()
 		print("\nINFO: " + str(len(highscore_results)) + " high score results for " + str(cat) + "\n")
 		highscores_in_cat = []
@@ -521,7 +520,7 @@ def group_similarities(gids, puzzle_categories):
 				sys.stdout.flush()
 				if cat not in lists_per_group_per_cat:
 					lists_per_group_per_cat[cat] = []
-				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and instr(puzzle_cat,"%s") ''' % (user, cat))
+				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and instr(puzzle_cat,\"%s\") ''' % (user, cat))
 				lists_per_user_per_cat = []
 				for idkey, view in views_per_user_per_cat.iteritems():
 					lists_per_user_per_cat.append(view_dict_to_list(view))
@@ -694,12 +693,12 @@ def main_stats():
 	if not fast:
 		print("INFO: Expertise analysis")
 		# Overall and per-metacategory Experts vs Novices
+		for mc in META_CATEGORIES:
+			search_mc = mc
+			centroid_stats(where='''where is_expert == 0 and instr(puzzle_cat, \"%s\")''' % search_mc, name=mc + "Novice")
+			centroid_stats(where='''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % search_mc, name=mc + "Expert")
 		centroid_stats(where="where is_expert == 0", name="OverallNovice")
 		centroid_stats(where="where is_expert == 1", name="OverallExpert")
-		for mc in META_CATEGORIES:
-			search_mc = '%' + mc + '%'
-			centroid_stats(where='''where is_expert == 0 and instr(puzzle_cat, "%s")''' % search_mc, name=mc + "Novice")
-			centroid_stats(where='''where is_expert == 1 and instr(puzzle_cat, "%s")''' % search_mc, name=mc + "Expert")
 	
 		print("INFO: Expertise analysis")
 		# Overall and per-metacategory Experts vs Novices
