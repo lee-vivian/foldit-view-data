@@ -399,7 +399,7 @@ def print_experiment_details():
 	print("num unique puzzles per category")
 	for cat in valid_puzzle_cats:
 		search_cat = '%' + cat + '%'
-		c.execute('''select count(distinct(pid)) from options where puzzle_cat like "%s"''' % search_cat)
+		c.execute('''select count(distinct(pid)) from options where puzzle_cat CONTAINS "%s"''' % search_cat)
 		category_count = c.fetchall()[0][0]
 		print('''%s : %d''' % (cat, category_count))
 
@@ -458,6 +458,9 @@ def get_valid_puzzle_categories():
 	for result in puzzle_category_results:
 		if result[1] > 0:
 			puzzle_categories.append(result[0])
+	print("TEST: puzzle categories are")
+	print(puzzle_categories)
+	# TODO separate by commas, get only the independent categories
 	return puzzle_categories
 
 def get_valid_gids():
@@ -475,7 +478,7 @@ def highscore_similarities(puzzle_categories):
 	all_highscores = []
 	for cat in puzzle_categories:
 		search_cat = '%' + cat + '%'
-		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and puzzle_cat like \"%s\"; ''' % search_cat)
+		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and puzzle_cat CONTAINS \"%s\"; ''' % search_cat)
 		highscore_results = c.fetchall()
 		print("\nINFO: " + str(len(highscore_results)) + " high score results for " + str(cat) + "\n")
 		highscores_in_cat = []
@@ -641,7 +644,7 @@ def count_view_frequencies():
 	count_view_popularity(data, "view_frequencies.csv")
 	
 	for metacat in META_CATEGORIES:
-		views = query_to_views("where puzzle_cat ==  \"" + metacat + "\"")
+		views = query_to_views("where puzzle_cat CONTAINS \"" + metacat + "\"")
 		data = []
 		for (id,view) in iteritems(views):
 			data.append((view_dict_to_list(view)))
@@ -692,16 +695,16 @@ def main_stats():
 		centroid_stats(where="where is_expert == 1", name="OverallExpert")
 		for mc in META_CATEGORIES:
 			search_mc = '%' + mc + '%'
-			centroid_stats(where='''where is_expert == 0 and puzzle_cat like "%s"''' % search_mc, name=mc + "Novice")
-			centroid_stats(where='''where is_expert == 1 and puzzle_cat like "%s"''' % search_mc, name=mc + "Expert")
+			centroid_stats(where='''where is_expert == 0 and puzzle_cat CONTAINS "%s"''' % search_mc, name=mc + "Novice")
+			centroid_stats(where='''where is_expert == 1 and puzzle_cat CONTAINS "%s"''' % search_mc, name=mc + "Expert")
 	
 		print("INFO: Expertise analysis")
 		# Overall and per-metacategory Experts vs Novices
 		centroid_stats(where="where is_expert == 0", name="OverallNovice")
 		centroid_stats(where="where is_expert == 1", name="OverallExpert")
 		for mc in META_CATEGORIES:
-			centroid_stats(where="where is_expert == 0 and puzzle_cat == \"" + mc + "\"", name= mc + "Novice")
-			centroid_stats(where="where is_expert == 1 and puzzle_cat ==  \"" + mc + "\"", name= mc + "Expert")
+			centroid_stats(where="where is_expert == 0 and puzzle_cat CONTAINS \"" + mc + "\"", name= mc + "Novice")
+			centroid_stats(where="where is_expert == 1 and puzzle_cat CONTAINS  \"" + mc + "\"", name= mc + "Expert")
 	
 		# Groups/Users			
 		print("INFO: Loading group and puzzle category data")
@@ -718,8 +721,6 @@ def main_stats():
 		cluster_plot("", "dendro_all_unique.png")
 	
 	
-	# TODO debug Electron Density
-
 	views_to_cnum = {} # map view : cluster num, e.g. 110001101 : 3
 	
 	# FIXME prints None?
