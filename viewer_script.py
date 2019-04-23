@@ -219,14 +219,13 @@ def test(args):
 	print("Beginning Tests...")
 	# Tests go here
 	#cluster_plot("where is_expert == 1", "dendro_expert_unique.png")
-	#cluster_plot("", "dendro_all_unique.png")
 	
-	views = query_to_views("")
-	data = []
-	for (id,view) in iteritems(views):
-		data.append((view_dict_to_list(view)))
-	unicode_clean(data)
-	count_view_popularity(data, "view_frequencies.csv")
+
+	# data = []
+	# for (id,view) in iteritems(views):
+		# data.append((view_dict_to_list(view)))
+	# unicode_clean(data)
+	# count_view_popularity(data, "view_frequencies.csv")
 
 	print("Done.")
 	
@@ -279,7 +278,6 @@ def cluster_plot(where, filename):
 	clusters_to_stats(data)
 
 def clusters_to_stats(data):
-	print("cluster test")
 	from sklearn.cluster import AgglomerativeClustering
 	num_clusters = 3
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
@@ -293,7 +291,17 @@ def clusters_to_stats(data):
 	for c in range(len(data_buckets.keys())):
 		print("Analyzing cluster " + str(c))
 		centroid_stats(cluster=data_buckets[c])
-	print("cluster plot test done.")
+	with open("clusters.csv", 'w') as c_file:
+		writer = csv.writer(c_file)
+		writer.writerow(["cluster_num", "view"])
+		for num, views in data_buckets.iteritems():
+			for view in views:
+				view_str = ''
+				for v in view:
+					if v == 0 or v == 1:
+						view_str += str(v)
+				writer.writerow([num, view_str])
+		
 
 # prints out number of missing entries for each option
 # reads 2000 entries at a time
@@ -348,6 +356,9 @@ def centroid_stats(where="", cluster=None, name=""):
 	print(c)
 	if name == "":
 		name = where
+	if len(c) < 1:
+		print("WARN: empty centroid")
+		return
 	with open(name + '.csv', 'w') as c_file:
 		writer = csv.writer(c_file)
 		writer.writerow(["dim", "M", "std"])
@@ -619,10 +630,25 @@ def groupuser_analysis():
 	incremental_similarity_averages_by_cat(groups_and_counts)
 	incremental_similarity_averages_by_cat(users_and_counts, user=True)
 	
+def count_view_frequencies():
+	views = query_to_views("")
+	data = []
+	for (id,view) in iteritems(views):
+		data.append((view_dict_to_list(view)))
+	unicode_clean(data)
+	count_view_popularity(data, "view_frequencies.csv")
 	
+	for metacat in META_CATEGORIES:
+		views = query_to_views("where puzzle_cat ==  \"" + metacat + "\"")
+		data = []
+		for (id,view) in iteritems(views):
+			data.append((view_dict_to_list(view)))
+		unicode_clean(data)
+		count_view_popularity(data, metacat + "_view_frequencies.csv")
 		
 # Calculate and print full report of interesting stats
 def main_stats():
+	global c
 	print("INFO: Beginning main stats tests")
 	
 	"""
@@ -656,39 +682,96 @@ def main_stats():
 		2. What does this mean beyond Foldit?	
 	"""
 	
-	print("INFO: Expertise analysis")
-	# Overall and per-metacategory Experts vs Novices
-	centroid_stats(where="where is_expert == 0", "OverallNovice")
-	centroid_stats(where="where is_expert == 1", "OverallExpert")
-	for mc in META_CATEGORIES:
-		centroid_stats(where="where is_expert == 0 and puzzle_cat == " + mc, mc + "Novice")
-		centroid_stats(where="where is_expert == 1 and puzzle_cat == " + mc, mc + "Expert")
+	fast = True # TODO change to false if running for the first time
+	if not fast:
 	
-	# Groups/Users			
-	print("INFO: Loading group and puzzle category data")
-	gids = get_valid_gids()
-	puzzle_categories = get_valid_puzzle_categories()
-	print("INFO: Highscore analysis")
-	highscore_similarities(puzzle_categories)
-	print("INFO: Group analysis")
-	group_similarities(gids, puzzle_categories)
-	print("INFO: User analysis")
-	groupuser_analysis()
+		print("INFO: Expertise analysis")
+		# Overall and per-metacategory Experts vs Novices
+		centroid_stats(where="where is_expert == 0", name="OverallNovice")
+		centroid_stats(where="where is_expert == 1", name="OverallExpert")
+		for mc in META_CATEGORIES:
+			centroid_stats(where="where is_expert == 0 and puzzle_cat == \"" + mc + "\"", name= mc + "Novice")
+			centroid_stats(where="where is_expert == 1 and puzzle_cat ==  \"" + mc + "\"", name= mc + "Expert")
+	
+	
+		# Groups/Users			
+		print("INFO: Loading group and puzzle category data")
+		gids = get_valid_gids()
+		puzzle_categories = get_valid_puzzle_categories()
+		print("INFO: Highscore analysis")
+		highscore_similarities(puzzle_categories)
+		print("INFO: Group analysis")
+		group_similarities(gids, puzzle_categories)
+		print("INFO: User analysis")
+		groupuser_analysis()
 			
-	# Clustering
-		# 1. Run clustering algorithm, described
-		# 2. Describe the centroids of each cluster, interpret
-		# 3. In what clusters do the most modal views fall under?
-			# a. Overall and per-metacategory
-		# 4. Group/user details
-			# a. Within each group/user, how many samples fall in each cluster?
-			# b. How many clusters does the group spread out over?
+		# Clustering
+		cluster_plot("", "dendro_all_unique.png")
+	
+	
+	# TODO debug Electron Density
+
+	views_to_cnum = {} # map view : cluster num, e.g. 110001101 : 3
+	
+	# FIXME prints None?
+	#query = '''select puzzle_cat, count(puzzle_cat) from options'''
+	#c.execute(query)
+	#print(c.fetchall())
+	
+	with open("clusters.csv", 'r') as c_file:
+		reader = csv.reader(c_file)
+		next(reader)
+		for row in reader:
+			views_to_cnum[row[1]] = row[0]
+	
+	if not fast:
+		# In what clusters do the most modal views fall under? Overall / per-metacategory
+		count_view_frequencies()
+		cluster_counts = defaultdict(int)
+		with open("view_frequencies.csv", 'r') as f:
+			reader = csv.reader(f)
+			next(reader)
+			for row in reader:
+				view_str = ""
+				for r in row[1:]:
+					if r == 0 or r == 1:
+						view_str += str(r)
+				cluster_num = views_to_cnum[view_str]
+				cluster_counts[cluster_num] += row[0]
+		with open('cluster_counts.csv', 'w') as c:
+			writer = csv.writer(c)
+			writer.writerow(["cluster", "freq"])
+			for num, freq in cluster_counts.iteritems():
+				writer.writerow([num, freq])
+		
+	for metacat in META_CATEGORIES:
+		cluster_counts = defaultdict(int)
+		with open(metacat + "_view_frequencies.csv", 'r') as f:
+			reader = csv.reader(f)
+			next(reader)
+			for row in reader:
+				view_str = ""
+				for r in row[1:]:
+					if r == 0 or r == 1:
+						view_str += str(r)
+				cluster_num = views_to_cnum(view_str)
+				cluster_counts[cluster_num] += row[0]
+		with open(metacat + '_cluster_counts.csv', 'w') as c:
+			writer = csv.writer(c)
+			writer.writerow(["cluster", "freq"])
+			for num, freq in cluster_counts.iteritems():
+				writer.writerow([num, freq])
+		
+	
+	# 4. Group/user details
+		# a. Within each group/user, how many samples fall in each cluster?
+		# b. How many clusters does the group spread out over?
 	
 	# Final questions:
 		# 1. What are the popular settings?
 		# 2. What does this mean beyond Foldit?	
 
-
+	print_experiment_details()
 
 def freq_all():
 	for o in FULL_OPTIONS_LIST:
