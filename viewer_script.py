@@ -521,7 +521,7 @@ def group_similarities(gids, puzzle_categories):
 				sys.stdout.flush()
 				if cat not in lists_per_group_per_cat:
 					lists_per_group_per_cat[cat] = []
-				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and puzzle_cat = \"%s\" ''' % (user, cat))
+				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and puzzle_cat CONTAINS \"%s\" ''' % (user, cat))
 				lists_per_user_per_cat = []
 				for idkey, view in views_per_user_per_cat.iteritems():
 					lists_per_user_per_cat.append(view_dict_to_list(view))
