@@ -344,7 +344,8 @@ def print_experiment_details():
 	valid_puzzle_cats = get_valid_puzzle_categories()
 	print("num unique puzzles per category")
 	for cat in valid_puzzle_cats:
-		c.execute('''select count(distinct(pid)) from options where puzzle_cat == "%s"''' % cat)
+		search_cat = '%' + cat + '%'
+		c.execute('''select count(distinct(pid)) from options where puzzle_cat like "%s"''' % search_cat)
 		category_count = c.fetchall()[0][0]
 		print('''%s : %d''' % (cat, category_count))
 
@@ -419,7 +420,8 @@ def highscore_similarities(puzzle_categories):
 	print("Calculating high score similarities")
 	all_highscores = []
 	for cat in puzzle_categories:
-		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and puzzle_cat == \"%s\"; ''' % cat)
+		search_cat = '%' + cat + '%'
+		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and puzzle_cat like \"%s\"; ''' % search_cat)
 		highscore_results = c.fetchall()
 		print("\nINFO: " + str(len(highscore_results)) + " high score results for " + str(cat) + "\n")
 		highscores_in_cat = []
@@ -615,11 +617,12 @@ def main_stats():
 	
 	print("INFO: Expertise analysis")
 	# Overall and per-metacategory Experts vs Novices
-	centroid_stats(where="where is_expert == 0", "OverallNovice")
-	centroid_stats(where="where is_expert == 1", "OverallExpert")
+	centroid_stats(where="where is_expert == 0", name="OverallNovice")
+	centroid_stats(where="where is_expert == 1", name="OverallExpert")
 	for mc in META_CATEGORIES:
-		centroid_stats(where="where is_expert == 0 and puzzle_cat == " + mc, mc + "Novice")
-		centroid_stats(where="where is_expert == 1 and puzzle_cat == " + mc, mc + "Expert")
+		search_mc = '%' + mc + '%'
+		centroid_stats(where='''where is_expert == 0 and puzzle_cat like "%s"''' % search_mc, name=mc + "Novice")
+		centroid_stats(where='''where is_expert == 1 and puzzle_cat like "%s"''' % search_mc, name=mc + "Expert")
 	
 	# Groups/Users			
 	print("INFO: Loading group and puzzle category data")
@@ -867,7 +870,7 @@ def add_is_expert_col(table):
 # Add puzzle_cat col to options table
 def add_puzzle_cat_col_to_options():
 	try:
-		c.execute('''ALTER TABLE options ADD puzzle_cat TEXT''')
+		c.execute('''ALTER TABLE options ADD puzzle_cat TEXT DEFAULT ""''')
 		print('''INFO: Created puzzle_cat column in options. Calculating puzzle_cat ...''')
 
 	except Exception as e:
@@ -875,14 +878,15 @@ def add_puzzle_cat_col_to_options():
 
 	for cat in PIDS_BY_CAT.keys():
 		puzzle_ids = map(int, PIDS_BY_CAT[cat])
-		c.execute('''update options set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
+		c.execute('''update options set puzzle_cat = puzzle_cat || '%s' where pid in %s'''
+			% (", " + str(cat), str(tuple(puzzle_ids))))
 
 	conn.commit()
 
 # Add puzzle_cat col to rprp_puzzle_ranks table
 def add_puzzle_cat_col_to_ranks():
 	try:
-		c.execute('''ALTER TABLE rprp_puzzle_ranks ADD puzzle_cat TEXT''')
+		c.execute('''ALTER TABLE rprp_puzzle_ranks ADD puzzle_cat TEXT DEFAULT ""''')
 		print('''INFO: Created puzzle_cat column in rprp_puzzle_ranks. Calculating puzzle_cat ...''')
 
 	except Exception as e:
@@ -890,7 +894,8 @@ def add_puzzle_cat_col_to_ranks():
 
 	for cat in PIDS_BY_CAT.keys():
 		puzzle_ids = map(int, PIDS_BY_CAT[cat])
-		c.execute('''update rprp_puzzle_ranks set puzzle_cat = '%s' where pid in %s''' % (cat, str(tuple(puzzle_ids))))
+		c.execute('''update rprp_puzzle_ranks set puzzle_cat = puzzle_cat || '%s' where pid in %s'''
+			% (", " + str(cat), str(tuple(puzzle_ids))))
 
 	conn.commit()
 
