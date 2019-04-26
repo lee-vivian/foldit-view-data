@@ -2,6 +2,7 @@
 from __future__ import division, print_function
 from future.utils import iteritems
 from collections import defaultdict
+from sklearn.cluster import AgglomerativeClustering
 
 
 # Fix for Python 2.x
@@ -275,11 +276,32 @@ def cluster_plot(where, filename):
 	data = list(data) # convert back because we need as list
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
 	plt.savefig(filename)
-	clusters_to_stats(data)
-
-def clusters_to_stats(data):
-	from sklearn.cluster import AgglomerativeClustering
-	num_clusters = 3
+	clusters_to_stats(data, num_clusters=3)
+	
+def get_see(cluster):
+	cent = centroid(cluster)
+	sse = 0
+	for view in cluster:
+		for dim in range(len(view)):
+			sse += abs(view[dim] - cent[dim]) ** 2
+	return sse
+	
+def graph_sses(max=10):
+	for i in range(max):
+		pass # TODO
+	
+def clusters_to_buckets(data, num_clusters=3):
+	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
+	cluster.fit_predict(data)
+	data_buckets = {}
+	for j in range(num_clusters):
+		data_buckets[j] = []
+	cluster_labels = cluster.labels_
+	for i in range(len(cluster_labels)):
+		data_buckets[cluster_labels[i]].append(data[i])
+	return data_buckets
+	
+def clusters_to_stats(data, num_clusters=3):
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
@@ -398,7 +420,7 @@ def print_experiment_details():
 	valid_puzzle_cats = get_valid_puzzle_categories()
 	print("num unique puzzles per category")
 	for cat in valid_puzzle_cats:
-		search_cat = '%' + cat + '%'
+		search_cat = cat
 		c.execute('''select count(distinct(pid)) from options where instr(puzzle_cat, \"%s\")''' % search_cat)
 		category_count = c.fetchall()[0][0]
 		print('''%s : %d''' % (cat, category_count))
@@ -479,7 +501,7 @@ def highscore_similarities(puzzle_categories):
 	print("Calculating high score similarities")
 	all_highscores = []
 	for cat in puzzle_categories:
-		search_cat = '%' + cat + '%'
+		search_cat = cat
 		c.execute('''select uid, pid from rprp_puzzle_ranks where best_score_is_hs = 1 and instr(puzzle_cat, \"%s\"); ''' % search_cat)
 		highscore_results = c.fetchall()
 		print("\nINFO: " + str(len(highscore_results)) + " high score results for " + str(cat) + "\n")
@@ -580,13 +602,17 @@ def incremental_similarity_averages_by_cat(files_and_counts, user=False):
 		inc_avgs = [0] * TOTAL_DIMS
 		inc_weight = 0
 		for name, count in files_and_counts.iteritems():
+			# NOTE: count is wrong for every cat, use glob to find file
 			prefix = "g_"
 			if user:
 				prefix = "u_"
-			csvfile = prefix + str(name) + "_c_" + metacat + "_count_" + str(count) + ".csv"
-			fullpath = os.path.join(GROUP_FOLDER, csvfile)
+			csv_prefix = prefix + str(name) + "_c_" + metacat + "_count_"
+			fullpath = os.path.join(GROUP_FOLDER, csv_prefix)
+			filename = ''
+			for file in glob.glob(fullpath + '*.csv'):
+				filename = file
 			sum = map(lambda x: x * inc_weight, inc_avgs)
-			with open(fullpath, 'r') as f:
+			with open(file, 'r') as f:
 				reader = csv.reader(f)
 				next(reader) # skip header
 				i = 0
@@ -631,11 +657,10 @@ def groupuser_analysis():
 						uid = m.group(1)
 						users_and_counts[uid] = count
 	
-						
-	incremental_similarity_averages(groups_and_counts)
-	incremental_similarity_averages(users_and_counts, user=True)
 	incremental_similarity_averages_by_cat(groups_and_counts)
 	incremental_similarity_averages_by_cat(users_and_counts, user=True)
+	incremental_similarity_averages(groups_and_counts)
+	incremental_similarity_averages(users_and_counts, user=True)
 	
 def count_view_frequencies():
 	views = query_to_views("")
@@ -657,6 +682,11 @@ def count_view_frequencies():
 def main_stats():
 	global c
 	print("INFO: Beginning main stats tests")
+	
+	# TODO delete
+	puzzle_categories = get_valid_puzzle_categories()
+	highscore_similarities(puzzle_categories)
+	return
 	
 	"""
 	MAIN STATS
@@ -689,7 +719,7 @@ def main_stats():
 		2. What does this mean beyond Foldit?	
 	"""
 	
-	fast = False # TODO change to false if running for the first time
+	fast = True # TODO change to false if running for the first time
 	if not fast:
 		print("INFO: Expertise analysis")
 		# Overall and per-metacategory Experts vs Novices
@@ -716,27 +746,22 @@ def main_stats():
 		highscore_similarities(puzzle_categories)
 		print("INFO: Group analysis")
 		group_similarities(gids, puzzle_categories)
+	
 		print("INFO: User analysis")
 		groupuser_analysis()
-			
+					
 		# Clustering
 		cluster_plot("", "dendro_all_unique.png")
-	
-	
+		
 	views_to_cnum = {} # map view : cluster num, e.g. 110001101 : 3
-	
-	# FIXME prints None?
-	#query = '''select puzzle_cat, count(puzzle_cat) from options'''
-	#c.execute(query)
-	#print(c.fetchall())
-	
 	with open("clusters.csv", 'r') as c_file:
 		reader = csv.reader(c_file)
 		next(reader)
 		for row in reader:
 			views_to_cnum[row[1]] = row[0]
 	
-	if not fast:
+	fast2 = False
+	if not fast2:
 		# In what clusters do the most modal views fall under? Overall / per-metacategory
 		count_view_frequencies()
 		cluster_counts = defaultdict(int)
@@ -748,10 +773,12 @@ def main_stats():
 				for r in row[1:]:
 					if r == 0 or r == 1:
 						view_str += str(r)
+				if view_str == "":
+					continue
 				cluster_num = views_to_cnum[view_str]
 				cluster_counts[cluster_num] += row[0]
-		with open('cluster_counts.csv', 'w') as c:
-			writer = csv.writer(c)
+		with open('cluster_counts.csv', 'w') as cc:
+			writer = csv.writer(cc)
 			writer.writerow(["cluster", "freq"])
 			for num, freq in cluster_counts.iteritems():
 				writer.writerow([num, freq])
@@ -766,10 +793,12 @@ def main_stats():
 				for r in row[1:]:
 					if r == 0 or r == 1:
 						view_str += str(r)
-				cluster_num = views_to_cnum(view_str)
+				if view_str == "":
+					continue
+				cluster_num = views_to_cnum[view_str]
 				cluster_counts[cluster_num] += row[0]
-		with open(metacat + '_cluster_counts.csv', 'w') as c:
-			writer = csv.writer(c)
+		with open(metacat + '_cluster_counts.csv', 'w') as cc:
+			writer = csv.writer(cc)
 			writer.writerow(["cluster", "freq"])
 			for num, freq in cluster_counts.iteritems():
 				writer.writerow([num, freq])
@@ -1686,7 +1715,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats
+	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats, glob
 	# import scikit, pandas, and/or oranges?
 
 	global conn, is_db_clean
