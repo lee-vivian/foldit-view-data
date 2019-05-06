@@ -199,34 +199,20 @@ FULL_OPTIONS_LIST = [
 
 # --------------- TEST BED -------------------------
 
-def test2(args):
-	#print("cluster test")
-	#cluster_plot("where is_expert == 1", "dendro_expert.png") # FIXME clustering can't hold it all in mem
 
+# place to run tests
+def test(args):
+	print("Beginning Tests...")
+	
+	#sse_plot()
 	print("freq test")
 	# test apply_inverse_frequency_weighting()
-	views = query_to_views("limit 1")
+	views = query_to_views("limit 20")
 	weighted_views = dict()
 	for id, view in views.iteritems():
 		weighted_view = apply_inverse_frequency_weighting(view)
 		weighted_views[id] = weighted_view
 	print(weighted_views)
-	
-	pass
-
-
-# place to run tests
-def test(args):
-	print("Beginning Tests...")
-	# Tests go here
-	#cluster_plot("where is_expert == 1", "dendro_expert_unique.png")
-	#get_valid_puzzle_categories()
-
-	# data = []
-	# for (id,view) in iteritems(views):
-		# data.append((view_dict_to_list(view)))
-	# unicode_clean(data)
-	# count_view_popularity(data, "view_frequencies.csv")
 
 	print("Done.")
 	
@@ -257,13 +243,23 @@ def list_to_set(data):
 		dataset.add(tuple(d))
 	return dataset
 
+def sse_plot():
+	plt.figure(figsize=(10,7))
+	views = query_to_views("") 
+	data = []
+	for (id,view) in iteritems(views):
+		data.append((view_dict_to_list(view)))
+	unicode_clean(data)
+	data = list_to_set(data) # convert to set to remove duplicates
+	data = list(data) # convert back because we need as list
+	graph_sses(data, max=15)
+	
 def cluster_plot(where, filename):
-	import scipy.cluster.hierarchy as shc
-	import matplotlib
-	matplotlib.use('Agg')
-	import matplotlib.pyplot as plt
 	plt.figure(figsize=(10,7))
 	views = query_to_views(where)
+	weighted_views = []
+	for view in views:
+		weighted_views.append(apply_inverse_frequency_weighting(view))
 	data = []
 	for (id,view) in iteritems(views):
 		data.append((view_dict_to_list(view)))
@@ -278,7 +274,7 @@ def cluster_plot(where, filename):
 	plt.savefig(filename)
 	clusters_to_stats(data, num_clusters=3)
 	
-def get_see(cluster):
+def get_sse(cluster):
 	cent = centroid(cluster)
 	sse = 0
 	for view in cluster:
@@ -286,9 +282,22 @@ def get_see(cluster):
 			sse += abs(view[dim] - cent[dim]) ** 2
 	return sse
 	
-def graph_sses(max=10):
-	for i in range(max):
-		pass # TODO
+def graph_sses(data, max=3):
+	sses = []
+	cluster_counts = []
+	for i in range(1, max+1):
+		print("INFO: Calculating SSE for " + str(i) + " clusters")
+		data_buckets = clusters_to_buckets(data, num_clusters=i)
+		sse_avg = 0
+		for key in data_buckets.keys():
+			print("---Cluster " + str(key+1))
+			sse_avg += get_sse(data_buckets[key])
+		sse_avg /= i
+		sses.append(sse_avg)
+		cluster_counts.append(i)
+	
+	plt.plot(cluster_counts, sses, linewidth=2)
+	plt.savefig("cluster_scree.png")
 	
 def clusters_to_buckets(data, num_clusters=3):
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
@@ -683,11 +692,6 @@ def main_stats():
 	global c
 	print("INFO: Beginning main stats tests")
 	
-	# TODO delete
-	puzzle_categories = get_valid_puzzle_categories()
-	highscore_similarities(puzzle_categories)
-	return
-	
 	"""
 	MAIN STATS
 	
@@ -815,7 +819,7 @@ def main_stats():
 	print_experiment_details()
 
 def freq_all():
-	for o in FULL_OPTIONS_LIST:
+	for o in BINARY_OPTIONS + CAT_OPTIONS:
 		try:
 			c.execute(FREQ_COUNT_QUERY % (o,o,o))
 			print(o.upper())
@@ -1490,6 +1494,9 @@ def distance(view1, view2):
 	dist = [(a - b)**2 for a, b in zip(view1, view2)]
 	return math.sqrt(sum(dist)) # apparently this method is faster than external lib methods
 
+def generate_frequencies_file():
+	pass # TODO
+	
 
 # Input: a View dict
 # Output: the View Dict, elementwise multiplied by (1-frequency)
@@ -1501,18 +1508,21 @@ def apply_inverse_frequency_weighting(view):
 	with open(FREQUENCIES_FILE, 'r') as frequencies_file:
 		reader = csv.reader(frequencies_file)
 		for row in reader:
-			freq_dict[row[0]] = row[1]
-
+			freq_dict[row[0] + str(row[1]] = row[2]
 	for opt in view.keys():
 		try:
 			option_val = int(view[opt])
-			multiplier = -1 if option_val == 0 else 1
-			view[opt] = multiplier * (1.0 - float(freq_dict[opt]))
+			zero = freq_dict[opt + "0"]
+			one = freq_dict[opt + "1"]
+			weight = 0
+			if option_val == 0:
+				weight = zero / (zero + one)
+				option_val = -1 # turn 0s to -1s
+			else:
+				weight = one / (zero + one)
+			option_val *= weight
 		except KeyError as e:
 			print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
-	if args.debug: # TODO remove after testing
-		print("DEBUG: Applied inverse frequency weighting. View is now:")
-		print(view)
 	return view
 
 # calculates the density of a cluster - i.e., the mean similarity between every view and every other view
@@ -1716,7 +1726,10 @@ if __name__ == "__main__":
 
 	print("Loading modules and data...")
 	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats, glob
-	# import scikit, pandas, and/or oranges?
+	import scipy.cluster.hierarchy as shc
+	import matplotlib
+	matplotlib.use('Agg')
+	import matplotlib.pyplot as plt
 
 	global conn, is_db_clean
 	is_db_clean = False
@@ -1744,17 +1757,17 @@ if args.debug:
 	print("DEBUG mode on")
 
 # TEST
-import StringIO
+# import StringIO
 # pr = cProfile.Profile()
 # pr.enable()
 # s = StringIO.StringIO()
-# main_stats() # change to test function
+# test(args)
 # pr.disable()
 # sortby = 'cumulative'
 # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
 # ps.print_stats()
 # print(s.getvalue())
-#exit(1)
+# exit(1)
 
 if args.test:
 	test(args)
