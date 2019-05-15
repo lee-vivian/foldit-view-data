@@ -1,61 +1,121 @@
-view_options__show_contact_map_geoms,0.999542439
-rank_popups,0.981119069
-tooltips,0.909453366
-selection_mode__show_notes,0.885234898
-view_options__guide_pulse,0.8220895
-view_options__gui_fade,0.810587996
-Score/Hydro,0.750276653
-advanced_mode,0.711660139
-Cartoon,0.689701255
-view_options__show_sidechains_with_issues,0.626858211
-view_options__show_hbonds,0.607225428
-view_options__working_pulse_style,0.597933116
-view_options__show_clashes,0.510029046
-sound,0.393909403
-Don't Show (Fast),0.39057949
-Show All (Slow),0.363321367
-view_options__dark_background,0.348312568
-view_options__show_bondable_atoms,0.33073377
-music,0.321657136
-view_options__show_sidechain_hbonds,0.30800691
-view_options__relative_score_coloring,0.272270811
-view_options__show_issues,0.262891824
-view_options__show_voids,0.260642319
-Show Stubs,0.246099144
-Cartoon Thin,0.233007263
-view_options__show_non_protein_hbonds,0.227081145
-view_options__show_other_hbonds,0.224940487
-view_options__show_helix_hbonds,0.222707107
-electron_density_panel__backface_culling,0.169033418
-selection_mode,0.127901328
-view_options__show_backbone_issues,0.10052428
-Score/Hydro+CPK,0.097333449
-puzzle_dialog__show_beginner,0.078779059
-view_options__show_outlines,0.076835937
-Score,0.067477107
-Line,0.055919163
-view_options__show_residue_burial,0.039775533
-puzzle_dialog__show_old,0.034806867
-Hydro,0.034121534
-Rainbow,0.029858358
-switch_residue_colors,0.01519021
-view_options__sym_chain_colors,0.015184163
-Trace Line,0.012170712
-switch_middle_right_click,0.012005426
-view_options__show_buried_polars,0.011176979
-Hydro/Score+CPK,0.005117827
-EnzDes,0.0047288
-Hydro/Score,0.004591733
-AAColor,0.004400243
-Line+H,0.00384996
-Stick,0.001737521
-CPK,0.001606502
-Trace Tube,0.001368651
-Stick+polarH,0.001032031
-Line+polarH,0.00060269
-AbegoColor,0.000483765
-Stick+H,0.000272118
-Sphere,0.000243898
-Cartoon Ligand,9.47E-05
-Ligand Specific,4.03E-06
-Hydrophobic,0
+option,value,freq
+advanced_mode,0,143048
+advanced_mode,1,353061
+electron_density_panel__backface_culling,0,412250
+electron_density_panel__backface_culling,1,83859
+music,0,336532
+music,1,159577
+puzzle_dialog__show_beginner,0,457026
+puzzle_dialog__show_beginner,1,39083
+puzzle_dialog__show_old,0,478841
+puzzle_dialog__show_old,1,17268
+rank_popups,0,9367
+rank_popups,1,486742
+selection_mode,0,432656
+selection_mode,1,63453
+selection_mode__show_notes,0,56936
+selection_mode__show_notes,1,439173
+sound,0,300687
+sound,1,195422
+switch_middle_right_click,0,490153
+switch_middle_right_click,1,5956
+switch_residue_colors,0,488573
+switch_residue_colors,1,7536
+tooltips,0,44921
+tooltips,1,451188
+view_options__dark_background,0,323308
+view_options__dark_background,1,172801
+view_options__gui_fade,0,93969
+view_options__gui_fade,1,402140
+view_options__guide_pulse,0,88263
+view_options__guide_pulse,1,407846
+view_options__relative_score_coloring,0,361033
+view_options__relative_score_coloring,1,135076
+view_options__show_backbone_issues,0,446238
+view_options__show_backbone_issues,1,49871
+view_options__show_bondable_atoms,0,332029
+view_options__show_bondable_atoms,1,164080
+view_options__show_buried_polars,0,490564
+view_options__show_buried_polars,1,5545
+view_options__show_clashes,0,243079
+view_options__show_clashes,1,253030
+view_options__show_contact_map_geoms,0,227
+view_options__show_contact_map_geoms,1,495882
+view_options__show_hbonds,0,194859
+view_options__show_hbonds,1,301250
+view_options__show_helix_hbonds,0,385622
+view_options__show_helix_hbonds,1,110487
+view_options__show_issues,0,365686
+view_options__show_issues,1,130423
+view_options__show_non_protein_hbonds,0,383452
+view_options__show_non_protein_hbonds,1,112657
+view_options__show_other_hbonds,0,384514
+view_options__show_other_hbonds,1,111595
+view_options__show_outlines,0,457990
+view_options__show_outlines,1,38119
+view_options__show_residue_burial,0,476376
+view_options__show_residue_burial,1,19733
+view_options__show_sidechain_hbonds,0,343304
+view_options__show_sidechain_hbonds,1,152805
+view_options__show_sidechains_with_issues,0,185119
+view_options__show_sidechains_with_issues,1,310990
+view_options__show_voids,0,366802
+view_options__show_voids,1,129307
+view_options__sym_chain_colors,0,488576
+view_options__sym_chain_colors,1,7533
+view_options__working_pulse_style,0,199469
+view_options__working_pulse_style,1,296640
+Don't Show (Fast),0,302339
+Don't Show (Fast),1,193770
+Show All (Slow),0,315862
+Show All (Slow),1,180247
+Show Stubs,0,374017
+Show Stubs,1,122092
+Cartoon,0,153942
+Cartoon,1,342167
+Cartoon Ligand,0,496062
+Cartoon Ligand,1,47
+Cartoon Thin,0,380512
+Cartoon Thin,1,115597
+Line,0,468367
+Line,1,27742
+Line+H,0,494199
+Line+H,1,1910
+Line+polarH,0,495810
+Line+polarH,1,299
+Sphere,0,495988
+Sphere,1,121
+Stick,0,495247
+Stick,1,862
+Stick+H,0,495974
+Stick+H,1,135
+Stick+polarH,0,495597
+Stick+polarH,1,512
+Trace Line,0,490071
+Trace Line,1,6038
+Trace Tube,0,495430
+Trace Tube,1,679
+AAColor,0,493926
+AAColor,1,2183
+AbegoColor,0,495869
+AbegoColor,1,240
+CPK,0,495312
+CPK,1,797
+EnzDes,0,493763
+EnzDes,1,2346
+Hydro,0,479181
+Hydro,1,16928
+Hydro/Score,0,493831
+Hydro/Score,1,2278
+Hydro/Score+CPK,0,493570
+Hydro/Score+CPK,1,2539
+Ligand Specific,0,496107
+Ligand Specific,1,2
+Rainbow,0,481296
+Rainbow,1,14813
+Score,0,462633
+Score,1,33476
+Score/Hydro,0,123890
+Score/Hydro,1,372219
+Score/Hydro+CPK,0,447821
+Score/Hydro+CPK,1,48288

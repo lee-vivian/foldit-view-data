@@ -819,7 +819,7 @@ def main_stats():
 	print_experiment_details()
 
 def freq_all():
-	for o in BINARY_OPTIONS + CAT_OPTIONS:
+	for o in BINARY_OPTIONS + CAT_OPTIONS.keys():
 		try:
 			c.execute(FREQ_COUNT_QUERY % (o,o,o))
 			print(o.upper())
@@ -1494,33 +1494,63 @@ def distance(view1, view2):
 	dist = [(a - b)**2 for a, b in zip(view1, view2)]
 	return math.sqrt(sum(dist)) # apparently this method is faster than external lib methods
 
+
 def generate_frequencies_file():
-	pass # TODO
-	
+	freq_bin_rows = []
+	freq_cat_rows = []
+
+	for o in BINARY_OPTIONS:
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o,o,o))
+			results = [[o] + list(r) for r in c.fetchall()]
+			freq_bin_rows += results
+		except Exception as e:
+			print("Invalid option: " + str(o))
+
+	for o in CAT_OPTIONS.keys():
+		try:
+			c.execute(FREQ_COUNT_QUERY % (o, o, o))
+			results = c.fetchall()
+			total = sum([x[1] for x in results])
+
+			for result in results:
+				freq_cat_rows += [[result[0], "0", total - result[1]], [result[0], "1", result[1]]]
+		except Exception as e:
+			print("Invalid option: " + str(o))
+
+	with open(FREQUENCIES_FILE, 'w') as cc:
+		writer = csv.writer(cc)
+		writer.writerow(["option", "value", "freq"])
+		writer.writerows(freq_bin_rows)
+		writer.writerows(freq_cat_rows)
+
 
 # Input: a View dict
 # Output: the View Dict, elementwise multiplied by (1-frequency)
 def apply_inverse_frequency_weighting(view):
+
+	# Generate the frequencies file
+	generate_frequencies_file()
+
 	if not os.path.isfile(FREQUENCIES_FILE):
 		raise Exception("ERR: Frequency file not found: " + FREQUENCIES_FILE)
 	freq_dict = {}
 	# Read in the frequencies file
 	with open(FREQUENCIES_FILE, 'r') as frequencies_file:
 		reader = csv.reader(frequencies_file)
+		next(reader, None) # skip header row
 		for row in reader:
-			freq_dict[row[0] + str(row[1]] = row[2]
+			freq_dict[row[0] + row[1]] = int(row[2])
 	for opt in view.keys():
 		try:
 			option_val = int(view[opt])
 			zero = freq_dict[opt + "0"]
 			one = freq_dict[opt + "1"]
-			weight = 0
 			if option_val == 0:
-				weight = zero / (zero + one)
-				option_val = -1 # turn 0s to -1s
+				weight = zero / (zero + one) if zero > 0 else 0  # avoid div by 0 error
 			else:
-				weight = one / (zero + one)
-			option_val *= weight
+				weight = one / (zero + one) if one > 0 else 0
+			view[opt] = 1.0 - weight
 		except KeyError as e:
 			print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
 	return view
