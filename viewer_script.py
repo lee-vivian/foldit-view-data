@@ -204,15 +204,7 @@ FULL_OPTIONS_LIST = [
 def test(args):
 	print("Beginning Tests...")
 	
-	#sse_plot()
-	print("freq test")
-	# test apply_inverse_frequency_weighting()
-	views = query_to_views("limit 20")
-	weighted_views = dict()
-	for id, view in views.iteritems():
-		weighted_view = apply_inverse_frequency_weighting(view)
-		weighted_views[id] = weighted_view
-	print(weighted_views)
+	sse_plot(weighted=True)	
 
 	print("Done.")
 	
@@ -243,16 +235,20 @@ def list_to_set(data):
 		dataset.add(tuple(d))
 	return dataset
 
-def sse_plot():
+def sse_plot(weighted=False, max=15):
 	plt.figure(figsize=(10,7))
-	views = query_to_views("") 
+	views = query_to_views("")
 	data = []
 	for (id,view) in iteritems(views):
-		data.append((view_dict_to_list(view)))
+		if weighted:
+			weighted_view = apply_inverse_frequency_weighting(view)
+			data.append((view_dict_to_list(weighted_view)))
+		else:
+			data.append((view_dict_to_list(view)))
 	unicode_clean(data)
 	data = list_to_set(data) # convert to set to remove duplicates
 	data = list(data) # convert back because we need as list
-	graph_sses(data, max=15)
+	graph_sses(data, max=max)
 	
 def cluster_plot(where, filename):
 	plt.figure(figsize=(10,7))
@@ -283,10 +279,11 @@ def get_sse(cluster):
 	return sse
 	
 def graph_sses(data, max=3):
+	print("INFO: Beginning graph of SSE by clusters for up to " + str(max) + " clusters")
 	sses = []
 	cluster_counts = []
 	for i in range(1, max+1):
-		print("INFO: Calculating SSE for " + str(i) + " clusters")
+		print("INFO: Calculating SSE for " + str(i) + " cluster(s)")
 		data_buckets = clusters_to_buckets(data, num_clusters=i)
 		sse_avg = 0
 		for key in data_buckets.keys():
@@ -1529,8 +1526,8 @@ def generate_frequencies_file():
 # Output: the View Dict, elementwise multiplied by (1-frequency)
 def apply_inverse_frequency_weighting(view):
 
-	# Generate the frequencies file
-	generate_frequencies_file()
+	# Generate the frequencies file (uncomment if need be)
+	#generate_frequencies_file()
 
 	if not os.path.isfile(FREQUENCIES_FILE):
 		raise Exception("ERR: Frequency file not found: " + FREQUENCIES_FILE)
@@ -1552,7 +1549,8 @@ def apply_inverse_frequency_weighting(view):
 				weight = one / (zero + one) if one > 0 else 0
 			view[opt] = 1.0 - weight
 		except KeyError as e:
-			print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
+			if opt is not "Hydrophobic": # hard code :( but Hydrophobic seems to be removed from game
+				print("WARN: No frequency found in " + FREQUENCIES_FILE + " for option: " + opt)
 	return view
 
 # calculates the density of a cluster - i.e., the mean similarity between every view and every other view
