@@ -204,9 +204,45 @@ FULL_OPTIONS_LIST = [
 def test(args):
 	print("Beginning Tests...")
 	
-	sse_plot(weighted=True)	
+	#sse_plot(weighted=True)	
+	cluster_plot("", "dendro_all_unique_6.png") # only need to run once, can comment out after
+	# cluster mapping is now saved to clusters.csv
+	clusters = {} # view : cluster
+	with open("clusters.csv", 'r') as f:
+		reader = csv.reader(f)
+		next(reader) # skip header
+		for row in reader:
+			clusters[row[1]] = row[0]
+	
+		
+		
 
 	print("Done.")
+	
+def test_group_stats():
+	gids = get_valid_gids()
+	groups = []
+	for gid in gids:
+		if gid == 0: # user not in a group
+			continue
+		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 and gid == \"%s\"; ''' % gid)
+		num_novices = len([result[0] for result in c.fetchall()])
+		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1 and gid == \"%s\"; ''' % gid)
+		num_experts = len([result[0] for result in c.fetchall()])
+		num_users = num_novices + num_experts
+		if num_users < 2: # remove small groups
+			continue
+		g = {}
+		g["id"] = gid
+		g["experts"] = num_experts
+		g["total"] = num_users
+		g["percent"] = num_experts / num_users
+		groups.append(g)
+	sorted_groups = multikeysort(groups, ["-percent", "-total"])
+	for gr in sorted_groups:
+		percent = '{:.1%}'.format(gr["percent"])
+		print("Group " + str(gr["id"]) + ": " + str(gr["experts"]) + "/" + str(gr["total"]) + " experts (" + percent + ")")
+
 	
 def count_view_popularity(data, file):
 	dataset = defaultdict(int)
@@ -235,7 +271,7 @@ def list_to_set(data):
 		dataset.add(tuple(d))
 	return dataset
 
-def sse_plot(weighted=False, max=15):
+def sse_plot(weighted=True, max=15):
 	plt.figure(figsize=(10,7))
 	views = query_to_views("")
 	data = []
@@ -250,7 +286,7 @@ def sse_plot(weighted=False, max=15):
 	data = list(data) # convert back because we need as list
 	graph_sses(data, max=max)
 	
-def cluster_plot(where, filename):
+def cluster_plot(where, filename, n_clusters=6):
 	plt.figure(figsize=(10,7))
 	views = query_to_views(where)
 	weighted_views = []
@@ -268,7 +304,7 @@ def cluster_plot(where, filename):
 	data = list(data) # convert back because we need as list
 	dend = shc.dendrogram(shc.linkage(data, method='ward'))
 	plt.savefig(filename)
-	clusters_to_stats(data, num_clusters=3)
+	clusters_to_stats(data, num_clusters=n_clusters)
 	
 def get_sse(cluster):
 	cent = centroid(cluster)
@@ -296,7 +332,7 @@ def graph_sses(data, max=3):
 	plt.plot(cluster_counts, sses, linewidth=2)
 	plt.savefig("cluster_scree.png")
 	
-def clusters_to_buckets(data, num_clusters=3):
+def clusters_to_buckets(data, num_clusters=6):
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
@@ -307,7 +343,7 @@ def clusters_to_buckets(data, num_clusters=3):
 		data_buckets[cluster_labels[i]].append(data[i])
 	return data_buckets
 	
-def clusters_to_stats(data, num_clusters=3):
+def clusters_to_stats(data, num_clusters=6):
 	cluster = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
 	cluster.fit_predict(data)
 	data_buckets = {}
@@ -475,6 +511,20 @@ def calculate_stddev(data, mean):
 
 
 # ------------ END TEST BED -----------------------
+
+
+def multikeysort(items, columns):
+    from operator import itemgetter
+    comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else
+                  (itemgetter(col.strip()), 1)) for col in columns]
+    def comparer(left, right):
+        for fn, mult in comparers:
+            result = cmp(fn(left), fn(right))
+            if result:
+                return mult * result
+        else:
+            return 0
+    return sorted(items, cmp=comparer)
 
 
 # ------------ ONE TIME FUNCTIONS -----------------
