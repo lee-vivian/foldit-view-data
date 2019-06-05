@@ -205,7 +205,7 @@ def test(args):
 	print("Beginning Tests...")
 	
 	#sse_plot(weighted=True)	
-	cluster_plot("", "dendro_all_unique_6.png") # only need to run once, can comment out after
+	cluster_plot("", "dendro_all_unique_6.png", weighted=False) # only need to run once, can comment out after
 	# cluster mapping is now saved to clusters.csv
 	clusters = {} # view : cluster
 	with open("clusters.csv", 'r') as f:
@@ -213,11 +213,48 @@ def test(args):
 		next(reader) # skip header
 		for row in reader:
 			clusters[row[1]] = row[0]
-	
+			
+	shannon_analysis(clusters, num_clusters=6)
 		
-		
-
 	print("Done.")
+	
+	
+# input: an array of counts
+# returns a value between [0,1] representing diversity, where 1 is the most diverse (evenly spread)
+def normalized_shannon_index(counts):
+	h = skbio.diversity.alpha.shannon(counts)
+	print("DEBUG: h is " + str(h))
+	# TODO normalize 
+	return h
+	
+def shannon_analysis(cluster_mapping, num_clusters=6):
+	gids = get_valid_gids()
+	valid_puzzle_cats = get_valid_puzzle_categories()
+	groups = []
+	for gid in gids:
+		if gid == 0: # user not in a group
+			continue
+		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 and gid == \"%s\"; ''' % gid)
+		novices = [result[0] for result in c.fetchall()]
+		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1 and gid == \"%s\"; ''' % gid)
+		experts = [result[0] for result in c.fetchall()]
+		if len(novices) + len(experts) < 2: # remove small groups
+			continue
+		for novice in novices:
+			user_views = []
+			for cat in valid_puzzle_cats:
+				views = query_to_views('''where uid = \"%s\" and instr(puzzle_cat, \"%s\")''' % (novice, cat))
+				view_distribution = [0] * num_clusters
+				for view in views:
+					list = view_dict_to_list(view)
+					str = view_list_to_string(list)
+					cluster = cluster_mapping[str]
+					view_distribution[cluster] += 1
+					# TODO
+		
+		for expert in experts:
+			pass
+		
 	
 def test_group_stats():
 	gids = get_valid_gids()
@@ -286,12 +323,15 @@ def sse_plot(weighted=True, max=15):
 	data = list(data) # convert back because we need as list
 	graph_sses(data, max=max)
 	
-def cluster_plot(where, filename, n_clusters=6):
+def cluster_plot(where, filename, n_clusters=6, weighted=False):
 	plt.figure(figsize=(10,7))
 	views = query_to_views(where)
 	weighted_views = []
 	for view in views:
-		weighted_views.append(apply_inverse_frequency_weighting(view))
+		if weighted:
+			weighted_views.append(apply_inverse_frequency_weighting(view))
+		else:
+			weighted_views.append(view)
 	data = []
 	for (id,view) in iteritems(views):
 		data.append((view_dict_to_list(view)))
@@ -360,12 +400,15 @@ def clusters_to_stats(data, num_clusters=6):
 		writer.writerow(["cluster_num", "view"])
 		for num, views in data_buckets.iteritems():
 			for view in views:
-				view_str = ''
-				for v in view:
-					if v == 0 or v == 1:
-						view_str += str(v)
+				view_str = view_list_to_string(view)
 				writer.writerow([num, view_str])
 		
+def view_list_to_string(view):
+	view_str = ''
+	for v in view:
+		if v == 0 or v == 1:
+			view_str += str(v)
+	return view_str
 
 # prints out number of missing entries for each option
 # reads 2000 entries at a time
@@ -1805,6 +1848,7 @@ if __name__ == "__main__":
 	print("Loading modules and data...")
 	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats, glob
 	import scipy.cluster.hierarchy as shc
+	from skbio.diversity.alpha import shannon
 	import matplotlib
 	matplotlib.use('Agg')
 	import matplotlib.pyplot as plt
