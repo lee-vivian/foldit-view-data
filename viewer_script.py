@@ -205,19 +205,98 @@ def test(args):
 	print("Beginning Tests...")
 	
 	#sse_plot(weighted=True)	
-	cluster_plot("", "dendro_all_unique_6.png", weighted=False) # only need to run once, can comment out after
+	#cluster_plot("", "dendro_all_unique_6.png", weighted=False) # only need to run once, can comment out after
 	# cluster mapping is now saved to clusters.csv
+	
 	clusters = {} # view : cluster
 	with open("clusters.csv", 'r') as f:
 		reader = csv.reader(f)
 		next(reader) # skip header
 		for row in reader:
 			clusters[row[1]] = row[0]
-			
-	shannon_analysis(clusters, num_clusters=6)
+	
+	#expertise_chi_square(clusters)
+	#puzzle_type_analysis(clusters)
+	group_cluster_analysis(clusters)
+	#shannon_analysis(clusters, num_clusters=6)
 		
 	print("Done.")
+
 	
+
+def expertise_chi_square(clusters):
+
+	# TODO truly randomly select novices instead of just using limit
+
+	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1''')
+	experts = c.fetchall()
+	expert_dists = [0.0] * 6
+	counter = [0, len(experts)]
+	for expert in experts:
+		views = query_to_views('''where uid = \"%s\"''' % expert)
+		dist = views_to_normalized_cluster_distribution(views, clusters)
+		expert_dists = [sum(x) for x in zip(dist, expert_dists)] # add
+		counter[0] += 1
+		if counter[0] % 5 == 0 or counter[0] == counter[1]:
+			print("Experts " + str(counter[0]) + "/" + str(counter[1]))
+			print("Expert frequency distribution across clusters: " + str(expert_dists))
+
+
+	# compare to an equal number of novices
+	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 limit %d''' % len(experts))
+	novices = c.fetchall()
+	novice_dists = [0.0] * 6
+	counter = [0,len(novices)]
+	for novice in novices:
+		views = query_to_views('''where uid = \"%s\"''' % novice)
+		dist = views_to_normalized_cluster_distribution(views, clusters)
+		novice_dists = [sum(x) for x in zip(dist, novice_dists)] # add
+		counter[0] += 1
+		if counter[0] % 5 == 0 or counter[0] == counter[1]:
+			print("Novices " + str(counter[0]) + "/" + str(counter[1]))
+			print("Novice frequency distribution across clusters: " + str(novice_dists))
+	
+	
+	chi_sq, p = stats.chisquare(novice_dists, expert_dists)
+	
+	print("Chi sq is " + str(chi_sq))
+	print("p = " + str(p))
+
+def views_to_normalized_cluster_distribution(views, cluster_mapping, num_clusters=6):
+	view_distribution = [0.0] * num_clusters
+	if len(views) == 0: # short-circuit for no views
+		return view_distribution
+		
+	for (id,view) in iteritems(views):
+		list = view_dict_to_list(view)
+		list_clean(list)
+		view_string = view_list_to_string(list)
+		cluster = cluster_mapping[view_string]
+		view_distribution[int(cluster)] += 1
+	
+	# normalize
+	scale = numpy.sum(view_distribution)
+	for i in range(len(view_distribution)):
+		view_distribution[i] /= scale
+		
+	return view_distribution
+	
+def get_cluster_centroids():
+	clusters = {} # view : cluster
+	with open("clusters.csv", 'r') as f:
+		reader = csv.reader(f)
+		next(reader) # skip header
+		for row in reader:
+			clusters[row[1]] = row[0]
+	
+	cl = []
+	for i in range(6):
+		cl.append([])
+	for (view,num) in iteritems(clusters):
+		cl[num].append(view)
+	print("clusters built")
+	for cluster in cl:
+		print("Centroid for cluster " + str(num) + " is " + str(centroid(cluster)))
 	
 # input: an array of counts
 # returns a value between [0,1] representing diversity, where 1 is the most diverse (evenly spread)
@@ -227,34 +306,44 @@ def normalized_shannon_index(counts):
 	# TODO normalize 
 	return h
 	
-def shannon_analysis(cluster_mapping, num_clusters=6):
-	gids = get_valid_gids()
+def puzzle_type_analysis(cluster_mapping, num_clusters=6):
 	valid_puzzle_cats = get_valid_puzzle_categories()
+	# and instr(puzzle_cat, \"%s\")
+	
+def group_cluster_analysis(cluster_mapping, num_clusters=6):
+	gids = get_valid_gids()
 	groups = []
+	counter = [0, len(gids)]
+	shannons = []
+	
+	# TEST, remove
+	gids = gids[1:5]
+	
 	for gid in gids:
 		if gid == 0: # user not in a group
 			continue
-		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 and gid == \"%s\"; ''' % gid)
-		novices = [result[0] for result in c.fetchall()]
-		c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1 and gid == \"%s\"; ''' % gid)
-		experts = [result[0] for result in c.fetchall()]
-		if len(novices) + len(experts) < 2: # remove small groups
+		group_dist = [0] * num_clusters
+		c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
+		users = [result[0] for result in c.fetchall()]
+		if len(users) < 2: # remove small groups
 			continue
-		for novice in novices:
-			user_views = []
-			for cat in valid_puzzle_cats:
-				views = query_to_views('''where uid = \"%s\" and instr(puzzle_cat, \"%s\")''' % (novice, cat))
-				view_distribution = [0] * num_clusters
-				for view in views:
-					list = view_dict_to_list(view)
-					str = view_list_to_string(list)
-					cluster = cluster_mapping[str]
-					view_distribution[cluster] += 1
-					# TODO
+		for user in users:
+			views = query_to_views('''where uid = \"%s\"''' % user)
+			view_distribution = views_to_normalized_cluster_distribution(views, cluster_mapping)
+			group_dists = [sum(x) for x in zip(view_distribution, group_dist)] # add
+		counter[0] += 1
+		print("Group " + str(counter[0]) + "/" + str(counter[1]))
+		print("Group frequency distribution across clusters: " + str(group_dist))
+		shannon = normalized_shannon_index(group_dist)
+		print("Shannon index: " + str(shannon))
+		shannons.append(shannon)
+		shannons.append(shannon)
 		
-		for expert in experts:
-			pass
-		
+	shannons_mean = numpy.mean(shannons)
+	shannons_std = numpy.std(shannons)
+	print("Average group Shannon index: " + str(shannons_mean))
+	print("Std Dev group Shannon index: " + str(shannons_std))
+
 	
 def test_group_stats():
 	gids = get_valid_gids()
@@ -1501,6 +1590,13 @@ def query_binarize_cat_to_dict(where, dictionary):
 
 	return dictionary
 
+def list_clean(list):
+	for i in range(len(list)):
+		if list[i] == u'0':
+			list[i] = 0
+		elif list[i] == u'1':
+			list[i] = 1
+	return list
 
 # convert unicode to ints, the hardcoded way
 def unicode_clean(cluster):
@@ -1517,7 +1613,12 @@ def unicode_clean(cluster):
 def view_dict_to_list(view):
 	list = []
 	for bin_opt in BINARY_OPTIONS:
-		list.append(view[bin_opt])
+		try:
+			list.append(view[bin_opt])
+		except Exception as e:
+			print("view_dict_to_list error")
+			if view.startswith("U"):
+				print("Did you accidentally give it the uid instead of the value of views[uid]?")
 	for cat_opt in CAT_KEYS:
 		for opt in CAT_OPTIONS[cat_opt]:
 			list.append(view[opt])
@@ -1846,7 +1947,9 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print("Loading modules and data...")
-	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path, cProfile, pstats, glob
+	import math, operator, csv, sys, re, numpy, sqlite3, datetime, os.path
+	import cProfile, pstats, glob
+	from scipy import stats
 	import scipy.cluster.hierarchy as shc
 	from skbio.diversity.alpha import shannon
 	import matplotlib
