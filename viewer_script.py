@@ -1,16 +1,16 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 from __future__ import division, print_function
-from future.utils import iteritems
 from collections import defaultdict
 from sklearn.cluster import AgglomerativeClustering
 
 
-# Fix for Python 2.x
-try: input = raw_input
-except NameError: pass
-
-try: from StringIO import StringIO
-except ImportError: from io import StringIO
+# Python 2.x deprecated
+# try:input = raw_input
+# except NameError: pass
+# try: from StringIO import StringIO
+# except ImportError: from io import StringIO
+# try: from future.utils import iteritems
+# except ModuleNotFoundError: pass
 
 GROUP_FOLDER = "groupuser_stats"
 ENTROPIES_FILE = "entropies.csv"
@@ -18,6 +18,8 @@ FREQUENCIES_FILE = "frequencies.csv"
 EXPERTS_FILE = "experts.csv"
 MIN_HIGHSCORES_PER_EXPERT = 2
 MIN_SAMPLES_PER_GROUP = 100
+UID_LENGTH = 33
+PID_LENGTH = 7
 
 
 """
@@ -215,24 +217,133 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	#expertise_chi_square(clusters)
+	expertise_chi_square(clusters)
 	#puzzle_type_analysis(clusters)
-	group_cluster_analysis(clusters)
+	#expertise_metacat_chi_square(clusters)
+	#group_cluster_analysis(clusters, nongroup=True)
 	#shannon_analysis(clusters, num_clusters=6)
 		
 	print("Done.")
+	
+def expertise_metacat_chi_square_with_pickle():
+	
+	import pickle
+	expert_chi_sq_table = pickle.load( open("expert_chi_sq_table.p", 'rb'))
+	pickle.dump(novice_chi_sq_table, open("novice_chi_sq_table.p", 'rb'))
+
+
+def expertise_metacat_chi_square(clusters):
+	
+	expert_chi_sq_table = []
+	expert_expected_table = []
+	novice_chi_sq_table = []
+	novice_expected_table = []
+	
+	# TODO get all views of that cat and then sort into users
+	# see puzzle_type_analysis
+	
+	import pickle
+	
+	for cat in META_CATEGORIES:
+	
+		print("Expertise metacat chi square: " + str(cat))
+
+		c.execute('''select distinct uid, pid from rprp_puzzle_ranks where is_expert == 1 and instr(puzzle_cat, \"%s\") order by random()''' % cat)
+		
+		exps = c.fetchall()
+		exp_pids = defaultdict(list)
+		for expert, pid in exps:
+			exp_pids[expert].append(pid)
+		expert_dists = [0.0] * 6
+		#expert_expected_dists = [0.0] * 6
+		counter = [0, len(exp_pids.items())]
+		for (id,pids) in exp_pids.items():
+			views = {}
+			pidcounter = [0, len(pids)]
+			for pid in pids:
+				print('\r' + str(pidcounter[0]) + '/' + str(pidcounter[1]), end='', flush=True)
+				views.update(query_to_views('''where uid = \"%s\" and pid = %d''' % (expert, pid)))
+				pidcounter[0] += 1
+			dist = views_to_normalized_cluster_distribution(views, clusters)
+			print(dist)
+			expert_dists = [sum(x) for x in zip(dist, expert_dists)] # add
+			print(expert_dists)
+			#expert_expected_dists = [sum(x) for x in zip([1/6] * 6, expert_expected_dists)] # add
+			counter[0] += 1
+			if counter[0] % 5 == 0 or counter[0] == counter[1]:
+				print("\nExperts for " + cat + " " + str(counter[0]) + "/" + str(counter[1]))
+				print("Expert frequency distribution across clusters: " + str(expert_dists))
+
+		# compare to an equal number of novices
+		c.execute('''select distinct uid, pid from rprp_puzzle_ranks where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat, len(exps)))
+		
+		novices = c.fetchall()
+		nov_pids = defaultdict(list)
+		for nov, pid in novices:
+			nov_pids[nov].append(pid)
+		novice_dists = [0.0] * 6
+		#novice_expected_dists = [0.0] * 6
+		counter = [0,len(nov_pids.items())]
+		for (novice, pids) in nov_pids.items():
+			views = []
+			pidcounter = [0, len(pids)]
+			for pid in pids:
+				print('\r' + str(pidcounter[0]) + '/' + str(pidcounter[1]), end='', flush=True)
+				views.update(query_to_views('''where uid = \"%s\" and pid = %d''' % (novice, pid)))
+				pidcounter[0] += 1
+			dist = views_to_normalized_cluster_distribution(views, clusters)
+			novice_dists = [sum(x) for x in zip(dist, novice_dists)] # add
+			#novice_expected_dists = [sum(x) for x in zip([1/6] * 6, novice_expected_dists)] # add
+			counter[0] += 1
+			if counter[0] % 5 == 0 or counter[0] == counter[1]:
+				print("\nNovices for " + cat + " " + str(counter[0]) + "/" + str(counter[1]))
+				print("Novice frequency distribution across clusters: " + str(novice_dists))
+			
+			
+		expert_chi_sq_table.append(expert_dists)
+		novice_chi_sq_table.append(novice_dists)
+		#expert_expected_table.append(expert_expected_dists)
+		#novice_expected_table.append(novice_expected_dists)
+	
+	pickle.dump(expert_chi_sq_table, open("expert_chi_sq_table.p", 'wb'))
+	pickle.dump(novice_chi_sq_table, open("novice_chi_sq_table.p", 'wb'))
+	
+	#chi_sq, p = stats.chisquare(expert_chi_sq_table, expert_expected_table)
+	#print("Expert cat chi sq is " + str(chi_sq))
+	#print("Expert cat p = " + str(p))
+	
+	#chi_sq, p = stats.chisquare(novice_chi_sq_table, novice_expected_table)
+	#print("Expert cat chi sq is " + str(chi_sq))
+	#print("Expert cat p = " + str(p))
 
 	
+# TODO do by puzzle cat too
+	
+# set reverse True for non-highscore
+def highscore_chi_square(clusters, reverse=False):
+	c.execute('''select distinct uid, pid, time from rprp_puzzle_ranks where best_score_is_hs == %d order by random()''' % (0 if reverse else 1)
+	keys = []
+	for result in c.fetchall():
+		uid = result[0]
+		pid = result[1]
+		time = result[2]
+		unique_id = str(uid) + str(pid) + str(time)
+		keys.append(unique_id)
+	views = query_to_views()
+	for (id,list) in views.items():
+		if id not in keys:
+			views[id].pop()
+			
+	dist = views_to_normalized_cluster_distribution(views, clusters)
 
+# FIXME doesn't get just the hs views
 def expertise_chi_square(clusters):
 
-	# TODO truly randomly select novices instead of just using limit
-
-	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1''')
-	experts = c.fetchall()
+	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1 order by random()''')
+	exps = c.fetchall()
 	expert_dists = [0.0] * 6
-	counter = [0, len(experts)]
-	for expert in experts:
+	counter = [0, len(exps)]
+	for expert in exps:
 		views = query_to_views('''where uid = \"%s\"''' % expert)
 		dist = views_to_normalized_cluster_distribution(views, clusters)
 		expert_dists = [sum(x) for x in zip(dist, expert_dists)] # add
@@ -243,7 +354,7 @@ def expertise_chi_square(clusters):
 
 
 	# compare to an equal number of novices
-	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 limit %d''' % len(experts))
+	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 order by random() limit %d''' % len(exps))
 	novices = c.fetchall()
 	novice_dists = [0.0] * 6
 	counter = [0,len(novices)]
@@ -267,7 +378,7 @@ def views_to_normalized_cluster_distribution(views, cluster_mapping, num_cluster
 	if len(views) == 0: # short-circuit for no views
 		return view_distribution
 		
-	for (id,view) in iteritems(views):
+	for (id,view) in views.items():
 		list = view_dict_to_list(view)
 		list_clean(list)
 		view_string = view_list_to_string(list)
@@ -292,58 +403,119 @@ def get_cluster_centroids():
 	cl = []
 	for i in range(6):
 		cl.append([])
-	for (view,num) in iteritems(clusters):
+	for (view,num) in clusters.items():
 		cl[num].append(view)
 	print("clusters built")
 	for cluster in cl:
 		print("Centroid for cluster " + str(num) + " is " + str(centroid(cluster)))
 	
-# input: an array of counts
-# returns a value between [0,1] representing diversity, where 1 is the most diverse (evenly spread)
-def normalized_shannon_index(counts):
-	h = skbio.diversity.alpha.shannon(counts)
-	print("DEBUG: h is " + str(h))
-	# TODO normalize 
-	return h
+def key_to_uid(key):
+	return [:UID_LENGTH]
 	
 def puzzle_type_analysis(cluster_mapping, num_clusters=6):
-	valid_puzzle_cats = get_valid_puzzle_categories()
-	# and instr(puzzle_cat, \"%s\")
+	shannons = []
+	counter = [0, len(META_CATEGORIES)]
+	shannon_file = "puzzle_type_shannons.csv"
 	
-def group_cluster_analysis(cluster_mapping, num_clusters=6):
+	with open(shannon_file, 'w') as pt_file:
+		writer = csv.writer(pt_file)
+		writer.writerow(["type", "users", "experts", "shannon"])
+		for cat in META_CATEGORIES:
+			print("Analysis on " + str(cat))
+			cat_dist = [0] * num_clusters
+			views = query_to_views('''where instr(puzzle_cat, \"%s\"); ''' % cat)
+			num_experts = 0
+			counter = [0, len(views)]
+			current_user = ""
+			users_views = {}
+			for (key, list) in sorted(views):
+				counter[0] += 1
+				print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
+				if current_user == key_to_uid(key):
+					users_views[key] = list
+				else:
+					if users_views != {}:
+						view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
+						cat_dist = [sum(x) for x in zip(view_distribution, cat_dist)] # add
+						if current_user in EXPERTS:
+							num_experts += 1
+						current_user = key_to_uid(key)
+						users_views = {}
+			if numpy.mean(cat_dist) > 0.1: # avoid empty groups of all 0s
+				print("\nType " + str(counter[0]) + "/" + str(counter[1]))
+				print("Type frequency distribution across clusters: " + str(cat_dist))
+				shan = shannon(cat_dist)
+				print("Shannon index: " + str(shan))
+				if shan != "nan":
+					shannons.append(shan)
+					writer.writerow([cat, len(users), num_experts, shan])
+				else:
+					print("Invalid shannon")
+			else:
+				print("Empty type")
+			with open(cat + "_dist.txt", 'w') as cat_file:
+				cat_file.write(str(cat_dist))
+			
+	shannons_mean = numpy.mean(shannons)
+	shannons_std = numpy.std(shannons)	
+	print("Average type Shannon index: " + str(shannons_mean))
+	print("Std Dev type Shannon index: " + str(shannons_std))
+
+
+
+	
+def group_cluster_analysis(cluster_mapping, num_clusters=6, nongroup=False):
 	gids = get_valid_gids()
 	groups = []
 	counter = [0, len(gids)]
 	shannons = []
+	valid_groups = 0
+	shannon_file = "group_shannons.csv"
+	if nongroup:
+		shannon_file = "nongroup_shannons.csv"
 	
-	# TEST, remove
-	gids = gids[1:5]
+	with open(shannon_file, 'w') as gs_file:
+		writer = csv.writer(gs_file)
+		writer.writerow(["gid", "users", "experts", "shannon"])
+		for gid in gids:
+			if (gid == 0 and not nongroup) or (gid != 0 and nongroup):
+				continue
+			group_dist = [0] * num_clusters
+			c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
+			users = [result[0] for result in c.fetchall()]
+			if len(users) < 2: # remove small groups
+				continue
+			print(str(len(users)) + " users")
+			num_experts = 0
+			for user in users:
+				print('.', end='', flush=True)
+				views = query_to_views('''where uid = \"%s\"''' % user)
+				view_distribution = views_to_normalized_cluster_distribution(views, cluster_mapping)
+				group_dist = [sum(x) for x in zip(view_distribution, group_dist)] # add
+				if user in EXPERTS:
+					num_experts += 1
+			counter[0] += 1
+			if numpy.mean(group_dist) > 0.1: # avoid empty groups of all 0s
+				print("\nGroup " + str(counter[0]) + "/" + str(counter[1]))
+				print("Group frequency distribution across clusters: " + str(group_dist))
+				shan = shannon(group_dist)
+				print("Shannon index: " + str(shan))
+				if shan != "nan":
+					shannons.append(shan)
+					valid_groups += 1
+					writer.writerow([gid, len(users), num_experts, shan])
+				else:
+					print("Invalid shannon")
+			else:
+				print("Empty group")
+			
 	
-	for gid in gids:
-		if gid == 0: # user not in a group
-			continue
-		group_dist = [0] * num_clusters
-		c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
-		users = [result[0] for result in c.fetchall()]
-		if len(users) < 2: # remove small groups
-			continue
-		for user in users:
-			views = query_to_views('''where uid = \"%s\"''' % user)
-			view_distribution = views_to_normalized_cluster_distribution(views, cluster_mapping)
-			group_dists = [sum(x) for x in zip(view_distribution, group_dist)] # add
-		counter[0] += 1
-		print("Group " + str(counter[0]) + "/" + str(counter[1]))
-		print("Group frequency distribution across clusters: " + str(group_dist))
-		shannon = normalized_shannon_index(group_dist)
-		print("Shannon index: " + str(shannon))
-		shannons.append(shannon)
-		shannons.append(shannon)
-		
+	
 	shannons_mean = numpy.mean(shannons)
-	shannons_std = numpy.std(shannons)
+	shannons_std = numpy.std(shannons)	
 	print("Average group Shannon index: " + str(shannons_mean))
 	print("Std Dev group Shannon index: " + str(shannons_std))
-
+	print("Valid groups: " + str(valid_groups))
 	
 def test_group_stats():
 	gids = get_valid_gids()
@@ -401,7 +573,7 @@ def sse_plot(weighted=True, max=15):
 	plt.figure(figsize=(10,7))
 	views = query_to_views("")
 	data = []
-	for (id,view) in iteritems(views):
+	for (id,view) in views.items():
 		if weighted:
 			weighted_view = apply_inverse_frequency_weighting(view)
 			data.append((view_dict_to_list(weighted_view)))
@@ -422,7 +594,7 @@ def cluster_plot(where, filename, n_clusters=6, weighted=False):
 		else:
 			weighted_views.append(view)
 	data = []
-	for (id,view) in iteritems(views):
+	for (id,view) in views.items():
 		data.append((view_dict_to_list(view)))
 	unicode_clean(data)
 	if args.debug:
@@ -487,7 +659,7 @@ def clusters_to_stats(data, num_clusters=6):
 	with open("clusters.csv", 'w') as c_file:
 		writer = csv.writer(c_file)
 		writer.writerow(["cluster_num", "view"])
-		for num, views in data_buckets.iteritems():
+		for num, views in data_buckets.items():
 			for view in views:
 				view_str = view_list_to_string(view)
 				writer.writerow([num, view_str])
@@ -515,7 +687,7 @@ def count_missing():
 	views = query_to_views("limit 2000 offset " + str(rows_counted)) # whole db, iteratively
 	while views is not None:
 		ll = []
-		for (id,view) in iteritems(views):
+		for (id,view) in views.items():
 			ll.append(view_dict_to_list(view))
 		for l in ll:
 			for i in range(len(list_of_options)):
@@ -539,7 +711,7 @@ def centroid_stats(where="", cluster=None, name=""):
 	if cluster is None:
 		views = query_to_views(where)
 		cluster = []
-		for (id,view) in iteritems(views):
+		for (id,view) in views.items():
 			cluster.append(view_dict_to_list(view))
 		print("Analyzing this centroid: " + where)
 	unicode_clean(cluster)
@@ -698,7 +870,7 @@ def highscore_similarities(puzzle_categories):
 			print('.',end='')
 			sys.stdout.flush()
 			views_per_user_per_cat = query_to_views('''where uid = \"%s\" and pid = %d ''' % (uid, pid))
-			for idkey, view in views_per_user_per_cat.iteritems():
+			for idkey, view in views_per_user_per_cat.items():
 				highscores_in_cat.append(view_dict_to_list(view))
 		centroid_name = "highscore_" + str(cat)
 		centroid_stats(cluster=highscores_in_cat, name=centroid_name)
@@ -732,7 +904,7 @@ def group_similarities(gids, puzzle_categories):
 					lists_per_group_per_cat[cat] = []
 				views_per_user_per_cat = query_to_views('''where uid = \"%s\" and instr(puzzle_cat,\"%s\") ''' % (user, cat))
 				lists_per_user_per_cat = []
-				for idkey, view in views_per_user_per_cat.iteritems():
+				for idkey, view in views_per_user_per_cat.items():
 					lists_per_user_per_cat.append(view_dict_to_list(view))
 				if lists_per_user_per_cat != []:
 					print('\n')
@@ -753,7 +925,7 @@ def incremental_similarity_averages(files_and_counts, user=False):
 	# average the standard deviations across all files
 	inc_avgs = [0] * TOTAL_DIMS
 	inc_weight = 0
-	for name, count in files_and_counts.iteritems():
+	for name, count in files_and_counts.items():
 		prefix = "g_"
 		if user:
 			prefix = "u_"
@@ -789,7 +961,7 @@ def incremental_similarity_averages_by_cat(files_and_counts, user=False):
 		# average the standard deviations across all files
 		inc_avgs = [0] * TOTAL_DIMS
 		inc_weight = 0
-		for name, count in files_and_counts.iteritems():
+		for name, count in files_and_counts.items():
 			# NOTE: count is wrong for every cat, use glob to find file
 			prefix = "g_"
 			if user:
@@ -853,7 +1025,7 @@ def groupuser_analysis():
 def count_view_frequencies():
 	views = query_to_views("")
 	data = []
-	for (id,view) in iteritems(views):
+	for (id,view) in items(views):
 		data.append((view_dict_to_list(view)))
 	unicode_clean(data)
 	count_view_popularity(data, "view_frequencies.csv")
@@ -861,7 +1033,7 @@ def count_view_frequencies():
 	for metacat in META_CATEGORIES:
 		views = query_to_views("where instr(puzzle_cat,\"" + metacat + "\")")
 		data = []
-		for (id,view) in iteritems(views):
+		for (id,view) in items(views):
 			data.append((view_dict_to_list(view)))
 		unicode_clean(data)
 		count_view_popularity(data, metacat + "_view_frequencies.csv")
@@ -963,7 +1135,7 @@ def main_stats():
 		with open('cluster_counts.csv', 'w') as cc:
 			writer = csv.writer(cc)
 			writer.writerow(["cluster", "freq"])
-			for num, freq in cluster_counts.iteritems():
+			for num, freq in cluster_counts.items():
 				writer.writerow([num, freq])
 		
 	for metacat in META_CATEGORIES:
@@ -983,7 +1155,7 @@ def main_stats():
 		with open(metacat + '_cluster_counts.csv', 'w') as cc:
 			writer = csv.writer(cc)
 			writer.writerow(["cluster", "freq"])
-			for num, freq in cluster_counts.iteritems():
+			for num, freq in cluster_counts.items():
 				writer.writerow([num, freq])
 		
 	
