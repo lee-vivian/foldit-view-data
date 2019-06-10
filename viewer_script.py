@@ -229,7 +229,7 @@ def chi_square_analysis(clusters):
 
 	print("CQA: getting all queries")
 	expert_views = query_to_views('''where is_expert == 1''')
-	print("DEBUG: identified " + len(expert_views) + " expert views")
+	print("DEBUG: identified " + str(len(expert_views)) + " expert views")
 	#hs_views = query_to_views('''where best_score_is_hs == 1''')
 	nonexpert_views = query_to_views('''where is_expert == 0 order by random() limit %d''' % len(expert_views))
 	#nonhs_views = query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % len(hs_views))
@@ -332,16 +332,16 @@ def sum_view_dists_by_user(cluster_mapping, views):
 	current_user = ""
 	users_views = {}
 	dist = [0.0] * 6
-	for (key, list) in sorted(views):
+	for key in sorted(views):
 		counter[0] += 1
 		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
 		if current_user == key_to_uid(key): # still on same user, append
-			users_views[key] = list
+			users_views[key] = views[key]
 		else: # switch users, flush out and start over
 			if users_views != {}:
 				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
-				current_user = key_to_uid(key)
+			current_user = key_to_uid(key)
 				
 	return dist
 
