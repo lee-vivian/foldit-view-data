@@ -228,24 +228,24 @@ def test(args):
 def chi_square_analysis(clusters):
 
 	print("CQA: getting all queries")
-	expert_views = query_to_keys('''where is_expert == 1''', getviews=True)
+	expert_views = query_to_views('''where is_expert == 1''')
 	print("DEBUG: identified " + len(expert_views) + " expert views")
-	hs_views = query_to_keys('''where best_score_is_hs == 1''', getviews=True)
-	nonexpert_views = query_to_keys('''where is_expert == 0 order by random() limit %d''' % len(expert_views), getviews=True)
-	nonhs_views = query_to_keys('''where best_score_is_hs == 0 order by random() limit %d''' % len(hs_views), getviews=True)
+	#hs_views = query_to_views('''where best_score_is_hs == 1''')
+	nonexpert_views = query_to_views('''where is_expert == 0 order by random() limit %d''' % len(expert_views))
+	#nonhs_views = query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % len(hs_views))
 	
 	print("CQA: getting all dists")
 	expert_dist = sum_view_dists_by_user(clusters, expert_views)
 	print("DEBUG: expert dist is:")
 	print(expert_dist)
-	hs_dist = sum_view_dists_by_user(clusters, hs_views)
+	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
 	nonexpert_dist = sum_view_dists_by_user(clusters, nonexpert_views)
-	nonhs_dist = sum_view_dists_by_user(clusters, nonhs_views)
+	#nonhs_dist = sum_view_dists_by_user(clusters, nonhs_views)
 
 	cat_expert_dists = []
-	cat_hs_dists = []
+	#cat_hs_dists = []
 	cat_nonexpert_dists = []
-	cat_nonhs_dists = []
+	#cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
 		cat_expert_views = query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)
