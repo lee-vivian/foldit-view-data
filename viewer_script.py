@@ -217,161 +217,136 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	expertise_chi_square(clusters)
+	chi_square_analysis(clusters)
 	#puzzle_type_analysis(clusters)
-	#expertise_metacat_chi_square(clusters)
-	#group_cluster_analysis(clusters, nongroup=True)
-	#shannon_analysis(clusters, num_clusters=6)
+	group_cluster_analysis(clusters, nongroup=False)
+	group_cluster_analysis(clusters, nongroup=True)
 		
 	print("Done.")
 	
-def expertise_metacat_chi_square_with_pickle():
 	
-	import pickle
-	expert_chi_sq_table = pickle.load( open("expert_chi_sq_table.p", 'rb'))
-	pickle.dump(novice_chi_sq_table, open("novice_chi_sq_table.p", 'rb'))
+def chi_square_analysis(clusters):
 
+	print("CQA: getting all queries")
+	expert_views = query_to_views('''where is_expert == 1''')
+	print("DEBUG: identified " + str(len(expert_views)) + " expert views")
+	#hs_views = query_to_views('''where best_score_is_hs == 1''')
+	nonexpert_views = query_to_views('''where is_expert == 0 order by random() limit %d''' % len(expert_views))
+	#nonhs_views = query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % len(hs_views))
+	
+	print("CQA: getting all dists")
+	expert_dist = sum_view_dists_by_user(clusters, expert_views)
+	print("DEBUG: expert dist is:")
+	print(expert_dist)
+	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
+	nonexpert_dist = sum_view_dists_by_user(clusters, nonexpert_views)
+	#nonhs_dist = sum_view_dists_by_user(clusters, nonhs_views)
 
-def expertise_metacat_chi_square(clusters):
-	
-	expert_chi_sq_table = []
-	expert_expected_table = []
-	novice_chi_sq_table = []
-	novice_expected_table = []
-	
-	# TODO get all views of that cat and then sort into users
-	# see puzzle_type_analysis
-	
-	import pickle
-	
+	cat_expert_dists = []
+	#cat_hs_dists = []
+	cat_nonexpert_dists = []
+	#cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
-	
-		print("Expertise metacat chi square: " + str(cat))
-
-		c.execute('''select distinct uid, pid from rprp_puzzle_ranks where is_expert == 1 and instr(puzzle_cat, \"%s\") order by random()''' % cat)
+		print("CQA: getting all queries by " + str(cat))
+		cat_expert_views = query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)
+		#cat_hs_views = query_to_keys('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''')
+		cat_nonexpert_views = query_to_keys('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,len(expert_views)))
+		#cat_nonhs_views = query_to_keys('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,len(hs_views)), getviews=True)
 		
-		exps = c.fetchall()
-		exp_pids = defaultdict(list)
-		for expert, pid in exps:
-			exp_pids[expert].append(pid)
-		expert_dists = [0.0] * 6
-		#expert_expected_dists = [0.0] * 6
-		counter = [0, len(exp_pids.items())]
-		for (id,pids) in exp_pids.items():
-			views = {}
-			pidcounter = [0, len(pids)]
-			for pid in pids:
-				print('\r' + str(pidcounter[0]) + '/' + str(pidcounter[1]), end='', flush=True)
-				views.update(query_to_views('''where uid = \"%s\" and pid = %d''' % (expert, pid)))
-				pidcounter[0] += 1
-			dist = views_to_normalized_cluster_distribution(views, clusters)
-			print(dist)
-			expert_dists = [sum(x) for x in zip(dist, expert_dists)] # add
-			print(expert_dists)
-			#expert_expected_dists = [sum(x) for x in zip([1/6] * 6, expert_expected_dists)] # add
-			counter[0] += 1
-			if counter[0] % 5 == 0 or counter[0] == counter[1]:
-				print("\nExperts for " + cat + " " + str(counter[0]) + "/" + str(counter[1]))
-				print("Expert frequency distribution across clusters: " + str(expert_dists))
+		print("CQA: getting all dists by " + str(cat))
+		cat_expert_dists.append(sum_view_dists_by_user(clusters, expert_views))
+		#cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
+		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, nonexpert_views))
+		#cat_nonhs_dists.append(sum_view_dists_by_user(clusters, nonhs_views))
 
-		# compare to an equal number of novices
-		c.execute('''select distinct uid, pid from rprp_puzzle_ranks where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat, len(exps)))
-		
-		novices = c.fetchall()
-		nov_pids = defaultdict(list)
-		for nov, pid in novices:
-			nov_pids[nov].append(pid)
-		novice_dists = [0.0] * 6
-		#novice_expected_dists = [0.0] * 6
-		counter = [0,len(nov_pids.items())]
-		for (novice, pids) in nov_pids.items():
-			views = []
-			pidcounter = [0, len(pids)]
-			for pid in pids:
-				print('\r' + str(pidcounter[0]) + '/' + str(pidcounter[1]), end='', flush=True)
-				views.update(query_to_views('''where uid = \"%s\" and pid = %d''' % (novice, pid)))
-				pidcounter[0] += 1
-			dist = views_to_normalized_cluster_distribution(views, clusters)
-			novice_dists = [sum(x) for x in zip(dist, novice_dists)] # add
-			#novice_expected_dists = [sum(x) for x in zip([1/6] * 6, novice_expected_dists)] # add
-			counter[0] += 1
-			if counter[0] % 5 == 0 or counter[0] == counter[1]:
-				print("\nNovices for " + cat + " " + str(counter[0]) + "/" + str(counter[1]))
-				print("Novice frequency distribution across clusters: " + str(novice_dists))
-			
-			
-		expert_chi_sq_table.append(expert_dists)
-		novice_chi_sq_table.append(novice_dists)
-		#expert_expected_table.append(expert_expected_dists)
-		#novice_expected_table.append(novice_expected_dists)
+	print("CQA: doing analysis")
+	chi_sq("expertise_main", expert_dist, nonexpert_dist)
+	#chi_sq("hs_main", hs_dist, nonhs_dist)
+	chi_sq("expertise_bycat", cat_expert_dists, cat_nonexpert_dists)
+	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
 	
-	pickle.dump(expert_chi_sq_table, open("expert_chi_sq_table.p", 'wb'))
-	pickle.dump(novice_chi_sq_table, open("novice_chi_sq_table.p", 'wb'))
 	
-	#chi_sq, p = stats.chisquare(expert_chi_sq_table, expert_expected_table)
-	#print("Expert cat chi sq is " + str(chi_sq))
-	#print("Expert cat p = " + str(p))
+	print("CQA: vs null")
+	null_expert = create_null_hypothesis_table(cat_expert_dists)
+	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
+	#null_hs = create_null_hypothesis_table(cat_hs_dists)
+	#null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
+	chi_sq("catvsnull_expert", cat_expert_dists, null_expert)
+	chi_sq("catvsnull_nonexpert", cat_nonexpert_dists, null_nonexpert)
+	#chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
+	#chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
 	
-	#chi_sq, p = stats.chisquare(novice_chi_sq_table, novice_expected_table)
-	#print("Expert cat chi sq is " + str(chi_sq))
-	#print("Expert cat p = " + str(p))
-
+# input: a num_categories x num_clusters table of view distributions
+# output: what that table would look like if num_categories didn't affect distribution
+def create_null_hypothesis_table(table):
+	new_table = [row[:] for row in table] # copy
+	for col in range(len(new_table[0])): # table[row][col
+		column = []
+		for row in range(len(new_table)):
+			column.append(new_table[row][col])
+		mean = numpy.mean(column)
+		for row in range(len(new_table)):
+			new_table[row][col] = mean
+	print("null hypo table test:")
+	print("original table:")
+	print(table)
+	print("new table:")
+	print(new_table)
+	return new_table
 	
-# TODO do by puzzle cat too
+# no extension
+def chi_sq(filename, table1, table2):
+	import pickle
+	pickle.dump(table1, open(filename + "1.p", 'wb'))
+	pickle.dump(table1, open(filename + "2.p", 'wb'))
+	with open(filename + '.txt', 'w') as f:
+		chi_sq, p = stats.chisquare(table1, table2)
+		f.write("X^2=" + str(chi_sq))
+		f.write("\np=" + str(p))
 	
-# set reverse True for non-highscore
-def highscore_chi_square(clusters, reverse=False):
-	c.execute('''select distinct uid, pid, time from rprp_puzzle_ranks where best_score_is_hs == %d order by random()''' % (0 if reverse else 1)
-	keys = []
+def query_to_keys(where):
+	c.execute('''select distinct uid, pid from rprp_puzzle_ranks ''' + where)
+	keys = set([])
 	for result in c.fetchall():
 		uid = result[0]
 		pid = result[1]
-		time = result[2]
-		unique_id = str(uid) + str(pid) + str(time)
-		keys.append(unique_id)
-	views = query_to_views()
-	for (id,list) in views.items():
-		if id not in keys:
-			views[id].pop()
-			
-	dist = views_to_normalized_cluster_distribution(views, clusters)
-
-# FIXME doesn't get just the hs views
-def expertise_chi_square(clusters):
-
-	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 1 order by random()''')
-	exps = c.fetchall()
-	expert_dists = [0.0] * 6
-	counter = [0, len(exps)]
-	for expert in exps:
-		views = query_to_views('''where uid = \"%s\"''' % expert)
-		dist = views_to_normalized_cluster_distribution(views, clusters)
-		expert_dists = [sum(x) for x in zip(dist, expert_dists)] # add
+		#time = result[2]
+		unique_id = str(uid) + str(pid) #+ str(time)
+		keys.add(unique_id)
+	return keys
+	# if not getviews:
+		# return keys
+	# else:
+		# views = query_to_views(where)
+		# num_keys = str(len(keys))
+		# for id in sorted(list(views)):			
+			# if any(id.startswith(sub_key) for sub_key in keys):
+				# #print("\r" + str(len(views)) + "/" + num_keys, end='', flush=True)
+				# continue
+			# else:
+				# del views[id]
+		# return views
+		
+def sum_view_dists_by_user(cluster_mapping, views):
+	counter = [0, len(views)]
+	current_user = ""
+	users_views = {}
+	dist = [0.0] * 6
+	for key in sorted(views):
 		counter[0] += 1
-		if counter[0] % 5 == 0 or counter[0] == counter[1]:
-			print("Experts " + str(counter[0]) + "/" + str(counter[1]))
-			print("Expert frequency distribution across clusters: " + str(expert_dists))
+		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
+		if current_user == key_to_uid(key): # still on same user, append
+			users_views[key] = views[key]
+		else: # switch users, flush out and start over
+			if users_views != {}:
+				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
+				dist = [sum(x) for x in zip(view_distribution, dist)] # add
+			current_user = key_to_uid(key)
+				
+	return dist
 
-
-	# compare to an equal number of novices
-	c.execute('''select distinct uid from rprp_puzzle_ranks where is_expert == 0 order by random() limit %d''' % len(exps))
-	novices = c.fetchall()
-	novice_dists = [0.0] * 6
-	counter = [0,len(novices)]
-	for novice in novices:
-		views = query_to_views('''where uid = \"%s\"''' % novice)
-		dist = views_to_normalized_cluster_distribution(views, clusters)
-		novice_dists = [sum(x) for x in zip(dist, novice_dists)] # add
-		counter[0] += 1
-		if counter[0] % 5 == 0 or counter[0] == counter[1]:
-			print("Novices " + str(counter[0]) + "/" + str(counter[1]))
-			print("Novice frequency distribution across clusters: " + str(novice_dists))
 	
-	
-	chi_sq, p = stats.chisquare(novice_dists, expert_dists)
-	
-	print("Chi sq is " + str(chi_sq))
-	print("p = " + str(p))
+# ------------------------------------------------------------
 
 def views_to_normalized_cluster_distribution(views, cluster_mapping, num_clusters=6):
 	view_distribution = [0.0] * num_clusters
@@ -391,26 +366,6 @@ def views_to_normalized_cluster_distribution(views, cluster_mapping, num_cluster
 		view_distribution[i] /= scale
 		
 	return view_distribution
-	
-def get_cluster_centroids():
-	clusters = {} # view : cluster
-	with open("clusters.csv", 'r') as f:
-		reader = csv.reader(f)
-		next(reader) # skip header
-		for row in reader:
-			clusters[row[1]] = row[0]
-	
-	cl = []
-	for i in range(6):
-		cl.append([])
-	for (view,num) in clusters.items():
-		cl[num].append(view)
-	print("clusters built")
-	for cluster in cl:
-		print("Centroid for cluster " + str(num) + " is " + str(centroid(cluster)))
-	
-def key_to_uid(key):
-	return [:UID_LENGTH]
 	
 def puzzle_type_analysis(cluster_mapping, num_clusters=6):
 	shannons = []
@@ -461,8 +416,6 @@ def puzzle_type_analysis(cluster_mapping, num_clusters=6):
 	print("Average type Shannon index: " + str(shannons_mean))
 	print("Std Dev type Shannon index: " + str(shannons_std))
 
-
-
 	
 def group_cluster_analysis(cluster_mapping, num_clusters=6, nongroup=False):
 	gids = get_valid_gids()
@@ -491,6 +444,7 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6, nongroup=False):
 				print('.', end='', flush=True)
 				views = query_to_views('''where uid = \"%s\"''' % user)
 				view_distribution = views_to_normalized_cluster_distribution(views, cluster_mapping)
+				view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
 				group_dist = [sum(x) for x in zip(view_distribution, group_dist)] # add
 				if user in EXPERTS:
 					num_experts += 1
@@ -509,13 +463,35 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6, nongroup=False):
 			else:
 				print("Empty group")
 			
-	
-	
 	shannons_mean = numpy.mean(shannons)
 	shannons_std = numpy.std(shannons)	
 	print("Average group Shannon index: " + str(shannons_mean))
 	print("Std Dev group Shannon index: " + str(shannons_std))
 	print("Valid groups: " + str(valid_groups))
+
+	
+# ------------------------------------------- END ANALYSIS -------------------------------------------
+# ----------------------------------------------------------------------------------------------------
+	
+def get_cluster_centroids():
+	clusters = {} # view : cluster
+	with open("clusters.csv", 'r') as f:
+		reader = csv.reader(f)
+		next(reader) # skip header
+		for row in reader:
+			clusters[row[1]] = row[0]
+	
+	cl = []
+	for i in range(6):
+		cl.append([])
+	for (view,num) in clusters.items():
+		cl[num].append(view)
+	print("clusters built")
+	for cluster in cl:
+		print("Centroid for cluster " + str(num) + " is " + str(centroid(cluster)))
+	
+def key_to_uid(key):
+	return key[:UID_LENGTH]
 	
 def test_group_stats():
 	gids = get_valid_gids()
@@ -1796,7 +1772,7 @@ def view_dict_to_list(view):
 			list.append(view[opt])
 	return list
 
-# TODO doesn't work if some of the dimensions were deleted during analysis
+# doesn't work if some of the dimensions were deleted during analysis
 # The reverse of view_dict_to_list
 # Input: list of just the view option values in a sorted order to keep things consistent
 # Output: view dict as "option name": option value
@@ -1958,7 +1934,7 @@ def density(cluster, dims=[-1]):
 
 
 
-# TODO maybe there should be some way to specify dims by human-readable option (for this and density function)
+# maybe there should be some way to specify dims by human-readable option (for this and density function)
 # returns the centroid of a cluster
 # if dims option is set, calculates for only specific dimension(s)
 def centroid(clus, dims=[-1]):
