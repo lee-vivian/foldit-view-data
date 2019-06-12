@@ -1,0 +1,37 @@
+Option,Cluster 0,Cluster 1,Cluster 2,Cluster 3,Cluster 4,Cluster 5
+view_options__show_other_hbonds,0,0,1,0,1,0
+view_options__relative_score_coloring,0,0,0,1,0,0
+view_options__show_non_protein_hbonds,0,0,1,0,1,0
+switch_residue_colors,0,0,0,0,0,0
+view_options__dark_background,0,0,0,1,0,1
+view_options__guide_pulse,1,1,1,1,1,1
+puzzle_dialog__show_old,0,0,0,0,0,0
+view_options__show_bondable_atoms,0,0,1,0,1,0
+view_options__gui_fade,1,1,1,1,1,1
+puzzle_dialog__show_beginner,0,0,0,0,0,0
+selection_mode__show_notes,1,1,1,1,1,1
+view_options__show_residue_burial,0,0,0,0,0,0
+view_options__show_contact_map_geoms,1,1,1,1,1,1
+view_options__show_voids,0,0,0,0,0,0
+view_options__working_pulse_style,1,0,1,0,1,0
+advanced_mode,1,1,1,1,1,1
+view_options__show_sidechain_hbonds,0,0,1,0,1,0
+music,0,0,0,0,0,0
+view_options__show_helix_hbonds,0,0,1,0,1,0
+tooltips,1,1,1,1,1,1
+view_options__show_hbonds,1,0,1,0,1,0
+view_options__render_style,Cartoon,Cartoon,Cartoon Thin,Cartoon Thin,Cartoon,Cartoon Thin
+view_options__show_issues,0,0,0,0,1,0
+selection_mode,0,0,0,0,0,0
+view_options__show_clashes,1,0,0,0,1,0
+rank_popups,1,1,1,1,1,1
+switch_middle_right_click,0,0,0,0,0,0
+sound,1,0,0,0,1,0
+view_options__show_sidechains_with_issues,1,0,1,0,1,0
+view_options__sidechain_mode,Show Stubs,Don't Show (Fast),Show All (Slow),Show All (Slow),Show All (Slow),Don't Show (Fast)
+view_options__show_buried_polars,0,0,0,0,0,0
+view_options__show_outlines,0,0,0,0,0,0
+view_options__show_backbone_issues,0,0,0,0,0,0
+view_options__sym_chain_colors,0,0,0,0,0,0
+view_options__current_visor,Score/Hydro,Score/Hydro,Score/Hydro,Score/Hydro+CPK,Score/Hydro,Score/Hydro
+electron_density_panel__backface_culling,0,0,0,0,0,0
