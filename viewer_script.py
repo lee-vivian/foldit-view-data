@@ -1680,28 +1680,33 @@ def import_experts(recalculate=False):
 
 # -------- END ONE TIME FUNCTIONS -----------------
 
-
-
-
 # -------- VIEW-BASED CALCULATIONS ----------------
 
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....")
 # For each result, create a view dict of bools representing each option, sorted by key
-# Output: dict of views (dict of dicts, keys are unique ids = uid + pid + time (concatted))
+# Output: dict of views (dict of dicts, keys are unique ids = gid/uid + pid + time (concatted))
 def query_to_views(where):
+
 	if args.debug:
 		print("\nDEBUG: query_to_views " + str(where))
-	views = {} # dict of dicts, uniquely identified by uid, pid, and time
-	query = '''select uid, pid, time, %s from options %s''' % (', '.join(opt for opt in BINARY_OPTIONS), where)
+
+	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
+
+	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
+	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
+	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in BINARY_OPTIONS), where)
+
 	c.execute(query)
 	results = c.fetchall()
+
 	for result in results:
-		unique_id = str(result[0]) + str(result[1]) + str(result[2])
+		gid = -1 if result[0] is None else result[0]
+		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
 		if unique_id not in views:
 			views[unique_id] = {}
 		view = views[unique_id]
 		for i in range(len(BINARY_OPTIONS)):
-			view[BINARY_OPTIONS[i]] = result[i+3]
+			view[BINARY_OPTIONS[i]] = result[i + 4]
 		views[unique_id] = view
 
 	# add CAT options to views dict
@@ -1716,27 +1721,35 @@ def query_to_views(where):
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....") and
 #        a dict of bools for options, sorted by key {unique_id : {option : bool}}
 # For each result, add to the given dict of bools each categorical option, sorted by key
-# Output: updated dict (dict of dicts, keys are unique ids = uid + pid + time (concatted))
-def query_binarize_cat_to_dict(where, dictionary):
-	query = '''select uid, pid, time, %s from options %s''' % (', '.join(cat for cat in CAT_KEYS), where)
+# Output: updated dict (dict of dicts, keys are unique ids = gid/uid + pid + time (concatted))
+def query_binarize_cat_to_dict(where, views):
+
+	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
+	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
+	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in CAT_OPTIONS), where)
+
 	c.execute(query)
 	results = c.fetchall()
 	for result in results:
-		unique_id = str(result[0]) + str(result[1]) + str(result[2])
-		if unique_id not in dictionary:
-			dictionary[unique_id] = {}
-		dict_entry = dictionary[unique_id]
-		for i in range(len(CAT_OPTIONS)):
-			optlist = CAT_OPTIONS[CAT_KEYS[i]]
-			for j in range(len(optlist)):
-				opt = optlist[j]
-				if opt == result[i+3]:
-					dict_entry[opt] = 1
-				else:
-					dict_entry[opt] = 0
-		dictionary[unique_id] = dict_entry
+		gid = -1 if result[0] is None else result[0]
+		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
+		if unique_id not in views:
+			views[unique_id] = {}
+		view = views[unique_id]
 
-	return dictionary
+		for i in range(len(CAT_OPTIONS)):
+
+			cat_option_name = list(CAT_OPTIONS.keys())[i]
+			cat_option_values = CAT_OPTIONS[cat_option_name]
+			result_value = result[i + 4]
+
+			for option in cat_option_values:
+				if option == result_value:
+					view[option] = 1
+				else:
+					view[option] = 0
+		views[unique_id] = view
+	return views
 
 def list_clean(list):
 	for i in range(len(list)):
@@ -2066,10 +2079,6 @@ def io_mode(args):
 			import_experts(recalculate=True)
 			add_is_expert_col("rprp_puzzle_ranks")
 			add_is_expert_col("options")
-			
-			
-			#print("TEST: adding hs to options")
-			#add_is_highscore_cols("options") # DEPRECATED, work around
 
 		if command == "stats":
 			print_experiment_details()
