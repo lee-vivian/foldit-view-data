@@ -336,6 +336,7 @@ def sum_view_dists_by_user(cluster_mapping, views):
 				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
 			current_user = key_to_uid(key)
+			user_views = {}
 				
 	return dist
 
