@@ -219,8 +219,8 @@ def test(args):
 	
 	chi_square_analysis(clusters)
 	#puzzle_type_analysis(clusters)
-	group_cluster_analysis(clusters, nongroup=False)
-	group_cluster_analysis(clusters, nongroup=True)
+	#group_cluster_analysis(clusters, nongroup=False)
+	#group_cluster_analysis(clusters, nongroup=True)
 		
 	print("Done.")
 	
@@ -232,43 +232,40 @@ def count_results(where):
 def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
-	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))
-	print("DEBUG: expert dist is:")
-	print(expert_dist)
-	
+	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
 	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	#nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % len(hs_views)))
-	#hs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1'''))
+	hs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1'''))
+	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
 
 
 	cat_expert_dists = []
 	cat_nonexpert_dists = []
-	#cat_hs_dists = []
-	#cat_nonhs_dists = []
+	cat_hs_dists = []
+	cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
 		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
 		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
-
-		# todo similalry for hs / nonhs
+		cat_hs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
+		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
 
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
-	#chi_sq("hs_main", hs_dist, nonhs_dist)
+	chi_sq("hs_main", hs_dist, nonhs_dist)
 	chi_sq("expertise_bycat", cat_expert_dists, cat_nonexpert_dists)
-	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
+	chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
 	
 	
 	print("CQA: vs null")
 	null_expert = create_null_hypothesis_table(cat_expert_dists)
 	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
-	#null_hs = create_null_hypothesis_table(cat_hs_dists)
-	#null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
+	null_hs = create_null_hypothesis_table(cat_hs_dists)
+	null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
 	chi_sq("catvsnull_expert", cat_expert_dists, null_expert)
 	chi_sq("catvsnull_nonexpert", cat_nonexpert_dists, null_nonexpert)
-	#chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
-	#chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
+	chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
+	chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
 	
 # input: a num_categories x num_clusters table of view distributions
 # output: what that table would look like if num_categories didn't affect distribution
@@ -281,11 +278,6 @@ def create_null_hypothesis_table(table):
 		mean = numpy.mean(column)
 		for row in range(len(new_table)):
 			new_table[row][col] = mean
-	print("null hypo table test:")
-	print("original table:")
-	print(table)
-	print("new table:")
-	print(new_table)
 	return new_table
 	
 # no extension
@@ -336,7 +328,7 @@ def sum_view_dists_by_user(cluster_mapping, views):
 				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
 			current_user = key_to_uid(key)
-			user_views = {}
+			users_views = {}
 				
 	return dist
 
@@ -486,7 +478,9 @@ def get_cluster_centroids():
 		print("Centroid for cluster " + str(num) + " is " + str(centroid(cluster)))
 	
 def key_to_uid(key):
-	return key[:UID_LENGTH]
+	splitter = key.split('/') # remove gid
+	uidplus = splitter[1]
+	return uidplus[:UID_LENGTH]
 	
 def test_group_stats():
 	gids = get_valid_gids()
