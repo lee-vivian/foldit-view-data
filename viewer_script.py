@@ -234,8 +234,10 @@ def chi_square_analysis(clusters):
 	print("CQA: getting all dists")
 	#expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
 	#nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	hs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1'''))
-	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
+	hs_views = query_to_views('''where best_score_is_hs == 1 limit 100''')
+	hs_count = len(hs_views)
+	hs_dist = sum_view_dists_by_user(clusters, hs_views) # TEST TODO remove limit 100
+	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
 
 
 	cat_expert_dists = []
@@ -246,8 +248,10 @@ def chi_square_analysis(clusters):
 		print("CQA: getting all queries by " + str(cat))
 		#cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
 		#cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
-		cat_hs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
-		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
+		hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
+		hs_count = len(hs_views)
+		cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
+		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
 
 	print("TEST DONE")
 	return
@@ -1724,7 +1728,7 @@ def query_binarize_cat_to_dict(where, views):
 	for result in results:
 		gid = -1 if result[0] is None else result[0]
 		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
-		if unique_id not in views:
+		if unique_id not in views: # FIXME this should never happen when called from query_to_views
 			views[unique_id] = {}
 		view = views[unique_id]
 
