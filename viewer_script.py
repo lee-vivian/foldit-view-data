@@ -234,9 +234,9 @@ def chi_square_analysis(clusters):
 	print("CQA: getting all dists")
 	#expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
 	#nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	hs_views = query_to_views('''where best_score_is_hs == 1 limit 100''')
+	hs_views = query_to_views('''where best_score_is_hs == 1''')
 	hs_count = len(hs_views)
-	hs_dist = sum_view_dists_by_user(clusters, hs_views) # TEST TODO remove limit 100
+	hs_dist = sum_view_dists_by_user(clusters, hs_views)
 	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
 
 
