@@ -232,8 +232,8 @@ def count_results(where):
 def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
-	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
-	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
+	#expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
+	#nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
 	hs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1'''))
 	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
 
@@ -244,11 +244,13 @@ def chi_square_analysis(clusters):
 	cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
-		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
-		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
+		#cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
+		#cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
 		cat_hs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
 		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
 
+	print("TEST DONE")
+	return
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
@@ -1767,11 +1769,18 @@ def view_dict_to_list(view):
 			list.append(view[bin_opt])
 		except Exception as e:
 			print("view_dict_to_list error")
+			print("The view was:")
+			print(view)
 			if view.startswith("U"):
 				print("Did you accidentally give it the uid instead of the value of views[uid]?")
 	for cat_opt in CAT_KEYS:
 		for opt in CAT_OPTIONS[cat_opt]:
-			list.append(view[opt])
+			try:
+				list.append(view[opt])
+			except Exception as e:
+				print("view_dict_to_list error")
+				print("The view was:")
+				print(view)
 	return list
 
 # doesn't work if some of the dimensions were deleted during analysis
