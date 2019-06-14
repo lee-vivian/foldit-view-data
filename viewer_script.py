@@ -1166,7 +1166,7 @@ def update_dictionary_apply_fn_options_freq(dictionary, fn):
 
 	# create dictionary for binarized cat options for each unique entry in options (uid + pid + time)
 	# {unique id : {cat_option_val : bool}}
-	binarized_cat_options_dict = query_binarize_cat_to_dict("", {})
+	binarized_cat_options_dict = query_to_views("", True)
 
 	cat_options_dict_per_unique_id = binarized_cat_options_dict.values()
 
@@ -1680,71 +1680,50 @@ def import_experts(recalculate=False):
 # Input: string of where queries for options table (e.g. "where uid=... and pid=....")
 # For each result, create a view dict of bools representing each option, sorted by key
 # Output: dict of views (dict of dicts, keys are unique ids = gid/uid + pid + time (concatted))
-def query_to_views(where):
+def query_to_views(where, cat_only=False):
 
 	if args.debug:
 		print("\nDEBUG: query_to_views " + str(where))
 
 	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
 
-	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
-	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
-	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in BINARY_OPTIONS), where)
+	query = '''select r.gid, o.uid, o.pid, o.time, %s, %s from options o
+	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
+	on o.uid == r.uid and o.pid == r.pid %s''' \
+			% (','.join(opt for opt in BINARY_OPTIONS), ','.join(opt for opt in CAT_OPTIONS), where)
 
 	c.execute(query)
 	results = c.fetchall()
 
+	num_bin_options = len(BINARY_OPTIONS)
+	num_cat_options = len(CAT_OPTIONS)
+
 	for result in results:
 		gid = -1 if result[0] is None else result[0]
 		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
+
 		if unique_id not in views:
 			views[unique_id] = {}
 		view = views[unique_id]
-		for i in range(len(BINARY_OPTIONS)):
-			view[BINARY_OPTIONS[i]] = result[i + 4]
+
+		if not cat_only:
+			for i in range(num_bin_options):
+				view[BINARY_OPTIONS[i]] = result[4 + i]
+
+		for j in range(num_cat_options):
+			cat_option_name = list(CAT_OPTIONS.keys())[j]
+			cat_option_values = CAT_OPTIONS[cat_option_name]
+			result_value = result[4 + num_bin_options + j]
+			for option in cat_option_values:
+				view[option] = 1 if option == result_value else 0
+
 		views[unique_id] = view
 
-	# add CAT options to views dict
-	if views != {}:
-		views = query_binarize_cat_to_dict(where, views)
 	if args.debug:
 		print("    query_to_views: " + str(len(views.keys())) + " results\n")
 
-	return views
+	return views.copy()
 
-
-# Input: string of where queries for options table (e.g. "where uid=... and pid=....") and
-#        a dict of bools for options, sorted by key {unique_id : {option : bool}}
-# For each result, add to the given dict of bools each categorical option, sorted by key
-# Output: updated dict (dict of dicts, keys are unique ids = gid/uid + pid + time (concatted))
-def query_binarize_cat_to_dict(where, views):
-
-	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
-	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
-	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in CAT_OPTIONS), where)
-
-	c.execute(query)
-	results = c.fetchall()
-	for result in results:
-		gid = -1 if result[0] is None else result[0]
-		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
-		if unique_id not in views: # FIXME this should never happen when called from query_to_views
-			views[unique_id] = {}
-		view = views[unique_id]
-
-		for i in range(len(CAT_OPTIONS)):
-
-			cat_option_name = list(CAT_OPTIONS.keys())[i]
-			cat_option_values = CAT_OPTIONS[cat_option_name]
-			result_value = result[i + 4]
-
-			for option in cat_option_values:
-				if option == result_value:
-					view[option] = 1
-				else:
-					view[option] = 0
-		views[unique_id] = view
-	return views
 
 def list_clean(list):
 	for i in range(len(list)):
@@ -1753,6 +1732,7 @@ def list_clean(list):
 		elif list[i] == u'1':
 			list[i] = 1
 	return list
+
 
 # convert unicode to ints, the hardcoded way
 def unicode_clean(cluster):
@@ -1763,6 +1743,7 @@ def unicode_clean(cluster):
 			elif cluster[i][j] == u'1':
 				cluster[i][j] = 1
 	return cluster
+
 
 # Input: view dict from query_to_views
 # Output: list of just the values in a sorted order to keep things consistent
@@ -1786,6 +1767,7 @@ def view_dict_to_list(view):
 				print("The view was:")
 				print(view)
 	return list
+
 
 # doesn't work if some of the dimensions were deleted during analysis
 # The reverse of view_dict_to_list
