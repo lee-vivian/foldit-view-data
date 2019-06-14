@@ -232,12 +232,12 @@ def count_results(where):
 def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
-	#expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
-	#nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	hs_views = query_to_views('''where best_score_is_hs == 1''')
-	hs_count = len(hs_views)
-	hs_dist = sum_view_dists_by_user(clusters, hs_views)
-	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
+	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 limit 100''')) # TODO remove limit	
+	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
+	#hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
+	#hs_count = len(hs_views)
+	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
+	#nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
 
 
 	cat_expert_dists = []
@@ -246,44 +246,62 @@ def chi_square_analysis(clusters):
 	cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
-		#cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
-		#cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
-		hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
-		hs_count = len(hs_views)
-		cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
-		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
+		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\") limit 100''' % cat))) # TODO remove limit
+		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
+		#hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
+		#hs_count = len(hs_views)
+		#cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
+		#cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
 
-	print("TEST DONE")
-	return
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
-	chi_sq("hs_main", hs_dist, nonhs_dist)
+	#chi_sq("hs_main", hs_dist, nonhs_dist)
 	chi_sq("expertise_bycat", cat_expert_dists, cat_nonexpert_dists)
-	chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
+	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
 	
 	
 	print("CQA: vs null")
 	null_expert = create_null_hypothesis_table(cat_expert_dists)
 	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
-	null_hs = create_null_hypothesis_table(cat_hs_dists)
-	null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
+	#null_hs = create_null_hypothesis_table(cat_hs_dists)
+	#null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
 	chi_sq("catvsnull_expert", cat_expert_dists, null_expert)
 	chi_sq("catvsnull_nonexpert", cat_nonexpert_dists, null_nonexpert)
-	chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
-	chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
+	#chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
+	#chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
 	
 # input: a num_categories x num_clusters table of view distributions
 # output: what that table would look like if num_categories didn't affect distribution
 def create_null_hypothesis_table(table):
 	new_table = [row[:] for row in table] # copy
-	for col in range(len(new_table[0])): # table[row][col
-		column = []
+	
+	# TODO
+	# 1. get the sum of each column (SC)
+	# 2. get the sum of each row (SR)
+	# 3. set the table to be row copies of the SC
+	# 4. multiply elementwise each row by its SR
+	
+	# get the scales, sum of each row and column
+	SC = [sum(table[row]) for row in range(len(table))]
+	SR = [sum(table[:][col]) for col in range(len(table[0]))]
+	scale = sum(SC)
+	print("table")
+	print(table)
+	print("SC")
+	print(SC)
+	print("SR")
+	print(SR)
+	print("scale")
+	print(scale)
+	
+	# normalize the columns
+	for col in range(len(new_table[0])): # table[row][col]
 		for row in range(len(new_table)):
-			column.append(new_table[row][col])
-		mean = numpy.mean(column)
-		for row in range(len(new_table)):
-			new_table[row][col] = mean
+			new_table[row][col] = SC[col] * SR[row] / scale
+		
+	print("new table")
+	print(new_table)
 	return new_table
 	
 # no extension
@@ -295,6 +313,12 @@ def chi_sq(filename, table1, table2):
 		chi_sq, p = stats.chisquare(table1, table2)
 		f.write("X^2=" + str(chi_sq))
 		f.write("\np=" + str(p))
+		for t in table1:
+			f.write('\n')
+			f.write(str(t))
+		for t in table2:
+			f.write('\n')
+			f.write(str(t))
 	
 def query_to_keys(where):
 	c.execute('''select distinct uid, pid from rprp_puzzle_ranks ''' + where)
@@ -1687,7 +1711,7 @@ def query_to_views(where):
 
 	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
 
-	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
+	query = '''select distinct r.gid, o.uid, o.pid, o.time, %s from options o 
 	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
 	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in BINARY_OPTIONS), where)
 
@@ -1699,6 +1723,9 @@ def query_to_views(where):
 		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
 		if unique_id not in views:
 			views[unique_id] = {}
+		else:
+			print("WARN: duplicate")
+			print(unique_id)
 		view = views[unique_id]
 		for i in range(len(BINARY_OPTIONS)):
 			view[BINARY_OPTIONS[i]] = result[i + 4]
@@ -1719,7 +1746,7 @@ def query_to_views(where):
 # Output: updated dict (dict of dicts, keys are unique ids = gid/uid + pid + time (concatted))
 def query_binarize_cat_to_dict(where, views):
 
-	query = '''select r.gid, o.uid, o.pid, o.time, %s from options o 
+	query = '''select distinct r.gid, o.uid, o.pid, o.time, %s from options o 
 	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r 
 	on o.uid == r.uid and o.pid == r.pid %s''' % (', '.join(opt for opt in CAT_OPTIONS), where)
 
@@ -1730,6 +1757,8 @@ def query_binarize_cat_to_dict(where, views):
 		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
 		if unique_id not in views: # FIXME this should never happen when called from query_to_views
 			views[unique_id] = {}
+			print("WARN: non duplicate")
+			print(unique_id)
 		view = views[unique_id]
 
 		for i in range(len(CAT_OPTIONS)):
