@@ -217,10 +217,8 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	chi_square_analysis(clusters)
-	#puzzle_type_analysis(clusters)
-	#group_cluster_analysis(clusters, nongroup=False)
-	#group_cluster_analysis(clusters, nongroup=True)
+	#chi_square_analysis(clusters)
+	group_cluster_analysis(clusters)
 		
 	print("Done.")
 	
@@ -232,12 +230,12 @@ def count_results(where):
 def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
-	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 limit 100''')) # TODO remove limit	
+	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
 	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	#hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
-	#hs_count = len(hs_views)
-	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
-	#nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
+	hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
+	hs_count = len(hs_views)
+	hs_dist = sum_view_dists_by_user(clusters, hs_views)
+	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
 
 
 	cat_expert_dists = []
@@ -246,62 +244,46 @@ def chi_square_analysis(clusters):
 	cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
-		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\") limit 100''' % cat))) # TODO remove limit
+		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
 		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
-		#hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
-		#hs_count = len(hs_views)
-		#cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
-		#cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
+		hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
+		hs_count = len(hs_views)
+		cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
+		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
 
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
-	#chi_sq("hs_main", hs_dist, nonhs_dist)
+	chi_sq("hs_main", hs_dist, nonhs_dist)
 	chi_sq("expertise_bycat", cat_expert_dists, cat_nonexpert_dists)
-	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
+	chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
 	
 	
 	print("CQA: vs null")
 	null_expert = create_null_hypothesis_table(cat_expert_dists)
 	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
-	#null_hs = create_null_hypothesis_table(cat_hs_dists)
-	#null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
+	null_hs = create_null_hypothesis_table(cat_hs_dists)
+	null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
 	chi_sq("catvsnull_expert", cat_expert_dists, null_expert)
 	chi_sq("catvsnull_nonexpert", cat_nonexpert_dists, null_nonexpert)
-	#chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
-	#chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
+	chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
+	chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
 	
 # input: a num_categories x num_clusters table of view distributions
 # output: what that table would look like if num_categories didn't affect distribution
 def create_null_hypothesis_table(table):
 	new_table = [row[:] for row in table] # copy
 	
-	# TODO
-	# 1. get the sum of each column (SC)
-	# 2. get the sum of each row (SR)
-	# 3. set the table to be row copies of the SC
-	# 4. multiply elementwise each row by its SR
-	
 	# get the scales, sum of each row and column
-	SC = [sum(table[row]) for row in range(len(table))]
-	SR = [sum(table[:][col]) for col in range(len(table[0]))]
+	SR = [sum(table[row]) for row in range(len(table))]
+	SC = [sum(x) for x in zip(*table)]
 	scale = sum(SC)
-	print("table")
-	print(table)
-	print("SC")
-	print(SC)
-	print("SR")
-	print(SR)
-	print("scale")
-	print(scale)
 	
 	# normalize the columns
 	for col in range(len(new_table[0])): # table[row][col]
 		for row in range(len(new_table)):
 			new_table[row][col] = SC[col] * SR[row] / scale
 		
-	print("new table")
-	print(new_table)
 	return new_table
 	
 # no extension
@@ -319,47 +301,73 @@ def chi_sq(filename, table1, table2):
 		for t in table2:
 			f.write('\n')
 			f.write(str(t))
-	
-def query_to_keys(where):
-	c.execute('''select distinct uid, pid from rprp_puzzle_ranks ''' + where)
-	keys = set([])
-	for result in c.fetchall():
-		uid = result[0]
-		pid = result[1]
-		#time = result[2]
-		unique_id = str(uid) + str(pid) #+ str(time)
-		keys.add(unique_id)
-	return keys
-	# if not getviews:
-		# return keys
-	# else:
-		# views = query_to_views(where)
-		# num_keys = str(len(keys))
-		# for id in sorted(list(views)):			
-			# if any(id.startswith(sub_key) for sub_key in keys):
-				# #print("\r" + str(len(views)) + "/" + num_keys, end='', flush=True)
-				# continue
-			# else:
-				# del views[id]
-		# return views
+			
+def sum_view_dists_by_group(cluster_mapping, views, stats=True):
+	counter = [0, len(views)]
+	current_group = ""
+	group_views = {}
+	exp_count = [0, 0]
+	dists = {} # gid : dist
+	experts = {} # gid : [num experts, total users]
+	for key in sorted(views):
+		counter[0] += 1
+		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
+		gid = key.split('/')[0]
+		if current_group == "": # handle first group
+			current_group = str(gid)
+		if current_group == str(gid): # still on same group, append
+			group_views[key] = views[key]
+		else: # switch group, flush out and start over
+			if group_views != {}:
+				view_distribution, exp_stats = sum_view_dists_by_user(cluster_mapping, group_views, stats=True, square=True)
+				dists[current_group] = view_distribution
+				experts[current_group] = exp_stats
+			current_group = str(gid)
+			group_views = {}
+			group_views[key] = views[key]
+	# finally
+	if group_views != {}:
+		view_distribution, exp_stats = sum_view_dists_by_user(cluster_mapping, group_views, stats=True, square=True)
+		dists[current_group] = view_distribution
+		experts[current_group] = exp_stats
+				
+	return dists, experts
 		
-def sum_view_dists_by_user(cluster_mapping, views):
+def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 	counter = [0, len(views)]
 	current_user = ""
 	users_views = {}
 	dist = [0.0] * 6
+	exp_stats = [0, 0]
 	for key in sorted(views):
 		counter[0] += 1
 		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
+		if current_user == "": # handle first user
+			current_user = key_to_uid(key)
 		if current_user == key_to_uid(key): # still on same user, append
 			users_views[key] = views[key]
 		else: # switch users, flush out and start over
 			if users_views != {}:
 				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
+				if current_user in EXPERTS:
+					exp_stats[0] += 1
+				exp_stats[1] += 1
+				if square:
+					view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
 			current_user = key_to_uid(key)
 			users_views = {}
-				
+	# finally
+	view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
+	if current_user in EXPERTS:
+		exp_stats[0] += 1
+	exp_stats[1] += 1
+	if square:
+		view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
+	dist = [sum(x) for x in zip(view_distribution, dist)] # add
+	
+	if stats:
+		return dist, exp_stats
 	return dist
 
 	
@@ -383,98 +391,50 @@ def views_to_normalized_cluster_distribution(views, cluster_mapping, num_cluster
 		view_distribution[i] /= scale
 		
 	return view_distribution
-	
-def puzzle_type_analysis(cluster_mapping, num_clusters=6):
-	shannons = []
-	counter = [0, len(META_CATEGORIES)]
-	shannon_file = "puzzle_type_shannons.csv"
-	
-	with open(shannon_file, 'w') as pt_file:
-		writer = csv.writer(pt_file)
-		writer.writerow(["type", "users", "experts", "shannon"])
-		for cat in META_CATEGORIES:
-			print("Analysis on " + str(cat))
-			cat_dist = [0] * num_clusters
-			views = query_to_views('''where instr(puzzle_cat, \"%s\"); ''' % cat)
-			num_experts = 0
-			counter = [0, len(views)]
-			current_user = ""
-			users_views = {}
-			for (key, list) in sorted(views):
-				counter[0] += 1
-				print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
-				if current_user == key_to_uid(key):
-					users_views[key] = list
-				else:
-					if users_views != {}:
-						view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
-						cat_dist = [sum(x) for x in zip(view_distribution, cat_dist)] # add
-						if current_user in EXPERTS:
-							num_experts += 1
-						current_user = key_to_uid(key)
-						users_views = {}
-			if numpy.mean(cat_dist) > 0.1: # avoid empty groups of all 0s
-				print("\nType " + str(counter[0]) + "/" + str(counter[1]))
-				print("Type frequency distribution across clusters: " + str(cat_dist))
-				shan = shannon(cat_dist)
-				print("Shannon index: " + str(shan))
-				if shan != "nan":
-					shannons.append(shan)
-					writer.writerow([cat, len(users), num_experts, shan])
-				else:
-					print("Invalid shannon")
-			else:
-				print("Empty type")
-			with open(cat + "_dist.txt", 'w') as cat_file:
-				cat_file.write(str(cat_dist))
-			
-	shannons_mean = numpy.mean(shannons)
-	shannons_std = numpy.std(shannons)	
-	print("Average type Shannon index: " + str(shannons_mean))
-	print("Std Dev type Shannon index: " + str(shannons_std))
 
 	
-def group_cluster_analysis(cluster_mapping, num_clusters=6, nongroup=False):
+def group_cluster_analysis(cluster_mapping, num_clusters=6):
 	gids = get_valid_gids()
 	groups = []
 	counter = [0, len(gids)]
 	shannons = []
 	valid_groups = 0
 	shannon_file = "group_shannons.csv"
-	if nongroup:
-		shannon_file = "nongroup_shannons.csv"
+	
+	views = query_to_views("where gid != -1")
+	dists, expert_counts = sum_view_dists_by_group(cluster_mapping, views)
+	
+	for gid in gids:
+		if str(gid) not in dists.keys():
+			print("missed group: " + str(gid))
 	
 	with open(shannon_file, 'w') as gs_file:
 		writer = csv.writer(gs_file)
-		writer.writerow(["gid", "users", "experts", "shannon"])
-		for gid in gids:
-			if (gid == 0 and not nongroup) or (gid != 0 and nongroup):
+		writer.writerow(["gid", "total_users", "experts", "percent_experts", "shannon"])
+		for gid in sorted(dists):
+			gid = str(gid)
+			if expert_counts[gid][0] < 2: # at least 2 users
 				continue
-			group_dist = [0] * num_clusters
-			c.execute('''select distinct uid from rprp_puzzle_ranks where gid == \"%s\"; ''' % gid)
-			users = [result[0] for result in c.fetchall()]
-			if len(users) < 2: # remove small groups
-				continue
-			print(str(len(users)) + " users")
-			num_experts = 0
-			for user in users:
-				print('.', end='', flush=True)
-				views = query_to_views('''where uid = \"%s\"''' % user)
-				view_distribution = views_to_normalized_cluster_distribution(views, cluster_mapping)
-				view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
-				group_dist = [sum(x) for x in zip(view_distribution, group_dist)] # add
-				if user in EXPERTS:
-					num_experts += 1
-			counter[0] += 1
+			group_dist = dists[gid]
 			if numpy.mean(group_dist) > 0.1: # avoid empty groups of all 0s
-				print("\nGroup " + str(counter[0]) + "/" + str(counter[1]))
-				print("Group frequency distribution across clusters: " + str(group_dist))
+				print("\nGroup " + str(gid))
+				print("Group freq dist: " + str(group_dist))
 				shan = shannon(group_dist)
 				print("Shannon index: " + str(shan))
 				if shan != "nan":
+					if gid == 0:
+						print("nongroup Shannon index: " + str(shan))
+						total_users = expert_counts[gid][0]
+						experts = expert_counts[gid][1]
+						percent_experts = experts * 100.0 / total_users
+						writer.writerow([gid, total_users, experts, percent_experts, shan])
+						continue
 					shannons.append(shan)
 					valid_groups += 1
-					writer.writerow([gid, len(users), num_experts, shan])
+					total_users = expert_counts[gid][0]
+					experts = expert_counts[gid][1]
+					percent_experts = experts * 100.0 / total_users
+					writer.writerow([gid, total_users, experts, percent_experts, shan])
 				else:
 					print("Invalid shannon")
 			else:
@@ -1069,7 +1029,7 @@ def main_stats():
 		2. What does this mean beyond Foldit?	
 	"""
 	
-	fast = True # TODO change to false if running for the first time
+	fast = True # change to false if running for the first time
 	if not fast:
 		print("INFO: Expertise analysis")
 		# Overall and per-metacategory Experts vs Novices
