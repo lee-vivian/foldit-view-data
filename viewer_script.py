@@ -217,9 +217,14 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
+	#c.execute('''select count(distinct gid) from rprp_puzzle_ranks''')
+	#c.execute('''select distinct gid, count(distinct uid) from rprp_puzzle_ranks group by gid order by count(distinct uid)''')
+	#results = c.fetchall()
+	#print(results)
+	
 	#chi_square_analysis(clusters)
 	group_cluster_analysis(clusters)
-		
+	
 	print("Done.")
 	
 def count_results(where):
@@ -421,13 +426,12 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6):
 				continue
 			group_dist = dists[gid]
 			if numpy.mean(group_dist) > 0.1: # avoid empty groups of all 0s
-				print("\nGroup " + str(gid))
+				print("\nGroup " + str(gid) + " (" + str(expert_counts[gid][1]) + "/" + str(expert_counts[gid][0]) + ")")
 				print("Group freq dist: " + str(group_dist))
 				shan = shannon(group_dist)
 				print("Shannon index: " + str(shan))
 				if shan != "nan":
-					if gid == 0:
-						print("nongroup Shannon index: " + str(shan))
+					if gid == "0":
 						total_users = expert_counts[gid][0]
 						experts = expert_counts[gid][1]
 						percent_experts = experts * 100.0 / total_users
@@ -440,13 +444,13 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6):
 					percent_experts = experts * 100.0 / total_users
 					writer.writerow([gid, total_users, experts, percent_experts, shan])
 				else:
-					print("\nInvalid shannon\n")
+					print("\nInvalid shannon: " + str(gid) + "\n")
 			else:
-				print("\nEmpty group\n")
+				print("\nEmpty group: " + str(gid) + "\n")
 			
 	shannons_mean = numpy.mean(shannons)
 	shannons_std = numpy.std(shannons)	
-	print("Average group Shannon index: " + str(shannons_mean))
+	print("\nAverage group Shannon index: " + str(shannons_mean))
 	print("Std Dev group Shannon index: " + str(shannons_std))
 	print("Valid groups: " + str(valid_groups))
 
