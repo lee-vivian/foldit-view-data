@@ -308,7 +308,7 @@ def sum_view_dists_by_group(cluster_mapping, views, stats=True):
 	group_views = {}
 	exp_count = [0, 0]
 	dists = {} # gid : dist
-	experts = {} # gid : [num experts, total users]
+	experts = {} # gid : [total_users, experts]
 	for key in sorted(views):
 		counter[0] += 1
 		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
@@ -330,6 +330,9 @@ def sum_view_dists_by_group(cluster_mapping, views, stats=True):
 		view_distribution, exp_stats = sum_view_dists_by_user(cluster_mapping, group_views, stats=True, square=True)
 		dists[current_group] = view_distribution
 		experts[current_group] = exp_stats
+	
+		
+	print("")
 				
 	return dists, experts
 		
@@ -338,7 +341,7 @@ def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 	current_user = ""
 	users_views = {}
 	dist = [0.0] * 6
-	exp_stats = [0, 0]
+	exp_stats = [0, 0] # total_users, experts
 	for key in sorted(views):
 		counter[0] += 1
 		print('\r' + str(counter[0]) + '/' + str(counter[1]), end='', flush=True)
@@ -350,8 +353,8 @@ def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 			if users_views != {}:
 				view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 				if current_user in EXPERTS:
-					exp_stats[0] += 1
-				exp_stats[1] += 1
+					exp_stats[1] += 1
+				exp_stats[0] += 1
 				if square:
 					view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
@@ -360,8 +363,9 @@ def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 	# finally
 	view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 	if current_user in EXPERTS:
-		exp_stats[0] += 1
-	exp_stats[1] += 1
+		exp_stats[1] += 1
+	exp_stats[0] += 1
+	
 	if square:
 		view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
 	dist = [sum(x) for x in zip(view_distribution, dist)] # add
@@ -436,9 +440,9 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6):
 					percent_experts = experts * 100.0 / total_users
 					writer.writerow([gid, total_users, experts, percent_experts, shan])
 				else:
-					print("Invalid shannon")
+					print("\nInvalid shannon\n")
 			else:
-				print("Empty group")
+				print("\nEmpty group\n")
 			
 	shannons_mean = numpy.mean(shannons)
 	shannons_std = numpy.std(shannons)	
