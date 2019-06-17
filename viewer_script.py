@@ -365,6 +365,7 @@ def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 				dist = [sum(x) for x in zip(view_distribution, dist)] # add
 			current_user = key_to_uid(key)
 			users_views = {}
+			users_views[key] = views[key]
 	# finally
 	view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
 	if current_user in EXPERTS:
