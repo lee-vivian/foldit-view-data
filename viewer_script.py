@@ -222,8 +222,21 @@ def test(args):
 	#results = c.fetchall()
 	#print(results)
 	
+	#c.execute('''select distinct gid, uid, pid from rprp_puzzle_ranks''')
+	#print(len(c.fetchall()))
+	c.execute('''select distinct r.gid, count(distinct o.uid) from options o 
+				join (select distinct gid, uid, pid from rprp_puzzle_ranks) r
+					on o.uid is r.uid and o.pid is r.pid group by r.gid''')
+
+	print(c.fetchall())
+	#query = '''select distinct r.gid, o.uid, o.pid, o.time, %s, %s from options o
+	#join (select distinct gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
+	#on o.uid == r.uid and o.pid == r.pid %s''' 
+	#c.execute(query)
+	#results = c.fetchall()
+	
 	#chi_square_analysis(clusters)
-	group_cluster_analysis(clusters)
+	#group_cluster_analysis(clusters)
 	
 	print("Done.")
 	
@@ -368,13 +381,12 @@ def sum_view_dists_by_user(cluster_mapping, views, stats=False, square=False):
 			users_views[key] = views[key]
 	# finally
 	view_distribution = views_to_normalized_cluster_distribution(users_views, cluster_mapping)
-	if current_user in EXPERTS:
-		exp_stats[1] += 1
-	exp_stats[0] += 1
-	
 	if square:
 		view_distribution = [x**2 for x in view_distribution] # NEW square the distribution so specializations stand out
 	dist = [sum(x) for x in zip(view_distribution, dist)] # add
+	if current_user in EXPERTS:
+		exp_stats[1] += 1
+	exp_stats[0] += 1
 	
 	if stats:
 		return dist, exp_stats
@@ -1681,7 +1693,7 @@ def query_to_views(where, cat_only=False):
 	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
 
 	query = '''select distinct r.gid, o.uid, o.pid, o.time, %s, %s from options o
-	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
+	join (select distinct gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
 	on o.uid == r.uid and o.pid == r.pid %s''' \
 			% (','.join(opt for opt in BINARY_OPTIONS), ','.join(opt for opt in CAT_OPTIONS), where)
 
