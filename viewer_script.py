@@ -2,6 +2,7 @@
 from __future__ import division, print_function
 from collections import defaultdict
 from sklearn.cluster import AgglomerativeClustering
+import operator
 
 
 # Python 2.x deprecated
@@ -217,26 +218,8 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	#c.execute('''select count(distinct gid) from rprp_puzzle_ranks''')
-	#c.execute('''select distinct gid, count(distinct uid) from rprp_puzzle_ranks group by gid order by count(distinct uid)''')
-	#results = c.fetchall()
-	#print(results)
-	
-	#c.execute('''select distinct gid, uid, pid from rprp_puzzle_ranks''')
-	#print(len(c.fetchall()))
-	c.execute('''select distinct r.gid, count(distinct o.uid) from options o 
-				join (select distinct gid, uid, pid from rprp_puzzle_ranks) r
-					on o.uid is r.uid and o.pid is r.pid group by r.gid''')
-
-	print(c.fetchall())
-	#query = '''select distinct r.gid, o.uid, o.pid, o.time, %s, %s from options o
-	#join (select distinct gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
-	#on o.uid == r.uid and o.pid == r.pid %s''' 
-	#c.execute(query)
-	#results = c.fetchall()
-	
-	#chi_square_analysis(clusters)
-	#group_cluster_analysis(clusters)
+	chi_square_analysis(clusters)
+	group_cluster_analysis(clusters)
 	
 	print("Done.")
 	
@@ -423,7 +406,7 @@ def group_cluster_analysis(cluster_mapping, num_clusters=6):
 	valid_groups = 0
 	shannon_file = "group_shannons.csv"
 	
-	views = query_to_views("where gid is not null")
+	views = query_to_views("")
 	dists, expert_counts = sum_view_dists_by_group(cluster_mapping, views)
 	
 	for gid in gids:
@@ -1704,7 +1687,7 @@ def query_to_views(where, cat_only=False):
 	num_cat_options = len(CAT_OPTIONS)
 
 	for result in results:
-		gid = -1 if result[0] is None else result[0]
+		gid = 0 if result[0] is None else result[0]
 		unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
 
 		if unique_id not in views:
