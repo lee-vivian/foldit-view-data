@@ -1347,6 +1347,45 @@ def add_is_expert_col(table):
 	conn.commit()
 
 
+# Add is_selected_novice col to options table where the number of novices = number of experts
+def add_is_selected_novice_to_options(reselect=False):
+
+	# Check if is_expert col exists in options
+	c.execute('''PRAGMA table_info(options)''')
+	results = c.fetchall()
+	options_cols = [result[1] for result in results]
+	if "is_expert" not in options_cols:
+		print("INFO: Adding is_expert col to options table...")
+		add_is_expert_col("options")
+
+	# Get number of experts in options
+	c.execute('''select count(distinct uid) from options where is_expert = 1''')
+	results = c.fetchall()
+	num_experts = results[0][0]
+	print("INFO: There are ", num_experts, " in the options table")
+
+	# Add is_selected_novice col to options
+	try:
+		c.execute('''ALTER TABLE options ADD is_selected_novice INT DEFAULT 0 NOT NULL''')
+		print('''INFO: Created is_selected_novice column in options. Selecting novices...''')
+	except Exception as e:
+		if reselect:
+			print("INFO: is_selected_novice already exists in options. Re-selecting novices... ")
+			c.execute('''update options set is_selected_novice = 0 where is_selected_novice = 1''')
+		else:
+			print('''INFO: is_selected_novice already exists in options. Exiting selection...''')
+			return
+
+	# Get list of random non-experts from options
+	c.execute('''select distinct uid from options where is_expert = 0 order by random() limit %s''' % num_experts)
+	results = c.fetchall()
+	non_expert_uids = [result[0] for result in results]
+
+	c.execute('''update options set is_selected_novice = 1 where uid in %s''' % (str(tuple(non_expert_uids))))
+	print("INFO: Selected ", num_experts, " novices randomly from the options table")
+	conn.commit()
+
+
 # Add puzzle_cat col to options table
 def add_puzzle_cat_col_to_options():
 	try:
@@ -2058,6 +2097,7 @@ def io_mode(args):
 			import_experts(recalculate=True)
 			add_is_expert_col("rprp_puzzle_ranks")
 			add_is_expert_col("options")
+			add_is_selected_novice_to_options(False)
 
 		if command == "stats":
 			print_experiment_details()
