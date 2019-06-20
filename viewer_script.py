@@ -3,6 +3,7 @@ from __future__ import division, print_function
 from collections import defaultdict
 from sklearn.cluster import AgglomerativeClustering
 import operator
+import scipy
 
 
 # Python 2.x deprecated
@@ -218,12 +219,28 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	count_view_frequencies()
-	
-	#chi_square_analysis(clusters)
+	#count_view_frequencies()
+	count_view_freq_test()
+	#add_is_selected_novice_to_options()
+	chi_square_analysis(clusters)
 	#group_cluster_analysis(clusters)
 	
 	print("Done.")
+	
+def count_view_freq_test():
+	with open("view_frequencies.csv", 'r') as f:
+		reader = csv.reader(f)
+		next(reader)
+		sum = 0
+		for row in reader:
+			if row == []:
+				continue
+			try:
+				sum += int(row[0])
+			except Exception as e:
+				print("row = " + str(row))
+				exit(1)
+		print("total views: " + str(sum))
 	
 def count_results(where):
 	c.execute('''select count(*) from options %s''' % where)
@@ -234,43 +251,47 @@ def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
 	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
-	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 order by random() limit %d''' % count_results('''where is_expert == 1''')))
-	hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
-	hs_count = len(hs_views)
-	hs_dist = sum_view_dists_by_user(clusters, hs_views)
-	nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
+	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_selected_novice == 1'''))
+	#hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
+	#hs_count = len(hs_views)
+	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
+	#nonhs_dist = sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 order by random() limit %d''' % hs_count))
 
 
 	cat_expert_dists = []
 	cat_nonexpert_dists = []
-	cat_hs_dists = []
-	cat_nonhs_dists = []
+	#cat_hs_dists = []
+	#cat_nonhs_dists = []
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
 		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
-		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,count_results('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))))
-		hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
-		hs_count = len(hs_views)
-		cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
-		cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
+		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_selected_novice == 1 and instr(puzzle_cat, \"%s\")''')))
+		#hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
+		#hs_count = len(hs_views)
+		#cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
+		#cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
 
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
-	chi_sq("hs_main", hs_dist, nonhs_dist)
 	chi_sq("expertise_bycat", cat_expert_dists, cat_nonexpert_dists)
-	chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
+	chi_sq("expertise_main_cont", expert_dist, nonexpert_dist, contingency=True)
+	chi_sq("expertise_bycat_cont", cat_expert_dists, cat_nonexpert_dists, contingency=True)
+	#chi_sq("hs_main", hs_dist, nonhs_dist)
+	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
 	
 	
 	print("CQA: vs null")
 	null_expert = create_null_hypothesis_table(cat_expert_dists)
 	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
-	null_hs = create_null_hypothesis_table(cat_hs_dists)
-	null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
+	#null_hs = create_null_hypothesis_table(cat_hs_dists)
+	#null_nonhs = create_null_hypothesis_table(cat_nonhs_dists)
 	chi_sq("catvsnull_expert", cat_expert_dists, null_expert)
 	chi_sq("catvsnull_nonexpert", cat_nonexpert_dists, null_nonexpert)
-	chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
-	chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
+	chi_sq("catvsnull_expert_cont", cat_expert_dists, null_expert, contingency=True)
+	chi_sq("catvsnull_nonexpert_cont", cat_nonexpert_dists, null_nonexpert, contingency=True)
+	#chi_sq("catvsnull_hs", cat_hs_dists, null_hs)
+	#chi_sq("catvsnull_nonhs", cat_nonhs_dists, null_nonhs)
 	
 # input: a num_categories x num_clusters table of view distributions
 # output: what that table would look like if num_categories didn't affect distribution
@@ -290,17 +311,25 @@ def create_null_hypothesis_table(table):
 	return new_table
 	
 # no extension
-def chi_sq(filename, table1, table2):
+def chi_sq(filename, table1, table2, contingency=False):
 	import pickle
 	pickle.dump(table1, open(filename + "1.p", 'wb'))
-	pickle.dump(table1, open(filename + "2.p", 'wb'))
-	with open(filename + '_transposed.txt', 'w') as f:
-		chi_sq, p = stats.chisquare(table1, table2)
+	pickle.dump(table2, open(filename + "2.p", 'wb'))
+	with open(filename + '.txt', 'w') as f:
+		if contingency:
+			chi_sq, p, dof, expected = scipy.stats.chi2_contingency(table1, correction=True) # Yates correction
+			table2 = expected
+		else:
+			chi_sq, p = stats.chisquare(table1, table2)
 		f.write("X^2=" + str(chi_sq))
 		f.write("\np=" + str(p))
+		if contingency:
+			f.write("\ndof=" + str(dof))
+		f.write("\Observed\n")
 		for t in table1:
 			f.write('\n')
 			f.write(str(t))
+		f.write("\nExpected\n")
 		for t in table2:
 			f.write('\n')
 			f.write(str(t))
