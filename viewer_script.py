@@ -218,8 +218,10 @@ def test(args):
 		for row in reader:
 			clusters[row[1]] = row[0]
 	
-	chi_square_analysis(clusters)
-	group_cluster_analysis(clusters)
+	count_view_frequencies()
+	
+	#chi_square_analysis(clusters)
+	#group_cluster_analysis(clusters)
 	
 	print("Done.")
 	
@@ -292,7 +294,7 @@ def chi_sq(filename, table1, table2):
 	import pickle
 	pickle.dump(table1, open(filename + "1.p", 'wb'))
 	pickle.dump(table1, open(filename + "2.p", 'wb'))
-	with open(filename + '.txt', 'w') as f:
+	with open(filename + '_transposed.txt', 'w') as f:
 		chi_sq, p = stats.chisquare(table1, table2)
 		f.write("X^2=" + str(chi_sq))
 		f.write("\np=" + str(p))
@@ -984,7 +986,7 @@ def groupuser_analysis():
 def count_view_frequencies():
 	views = query_to_views("")
 	data = []
-	for (id,view) in items(views):
+	for (id,view) in views.items():
 		data.append((view_dict_to_list(view)))
 	unicode_clean(data)
 	count_view_popularity(data, "view_frequencies.csv")
@@ -992,7 +994,7 @@ def count_view_frequencies():
 	for metacat in META_CATEGORIES:
 		views = query_to_views("where instr(puzzle_cat,\"" + metacat + "\")")
 		data = []
-		for (id,view) in items(views):
+		for (id,view) in views.items():
 			data.append((view_dict_to_list(view)))
 		unicode_clean(data)
 		count_view_popularity(data, metacat + "_view_frequencies.csv")
@@ -1675,8 +1677,8 @@ def query_to_views(where, cat_only=False):
 
 	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
 
-	query = '''select distinct r.gid, o.uid, o.pid, o.time, %s, %s from options o
-	join (select distinct gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
+	query = '''select r.gid, o.uid, o.pid, o.time, %s, %s from options o
+	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
 	on o.uid == r.uid and o.pid == r.pid %s''' \
 			% (','.join(opt for opt in BINARY_OPTIONS), ','.join(opt for opt in CAT_OPTIONS), where)
 
@@ -1693,8 +1695,9 @@ def query_to_views(where, cat_only=False):
 		if unique_id not in views:
 			views[unique_id] = {}
 		else:
-			print("WARN: duplicate")
-			print(unique_id)
+			pass
+			#print("WARN: duplicate")
+			#print(unique_id)
 		view = views[unique_id]
 
 		if not cat_only:
