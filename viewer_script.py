@@ -220,8 +220,9 @@ def test(args):
 			clusters[row[1]] = row[0]
 	
 	#count_view_frequencies()
-	count_view_freq_test()
-	#add_is_selected_novice_to_options()
+	#count_view_freq_test()
+	#print(count_results("where is_expert = 1"))
+	#add_is_selected_novice_to_options(reselect=True)
 	chi_square_analysis(clusters)
 	#group_cluster_analysis(clusters)
 	
@@ -250,8 +251,10 @@ def count_results(where):
 def chi_square_analysis(clusters):
 	
 	print("CQA: getting all dists")
-	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
 	nonexpert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_selected_novice == 1'''))
+	print(nonexpert_dist)
+	expert_dist = sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1'''))	
+	
 	#hs_views = query_to_views('''where best_score_is_hs == 1 ''') 
 	#hs_count = len(hs_views)
 	#hs_dist = sum_view_dists_by_user(clusters, hs_views)
@@ -265,12 +268,21 @@ def chi_square_analysis(clusters):
 	for cat in META_CATEGORIES:
 		print("CQA: getting all queries by " + str(cat))
 		cat_expert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_expert == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
-		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_selected_novice == 1 and instr(puzzle_cat, \"%s\")''')))
+		cat_nonexpert_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where is_selected_novice == 1 and instr(puzzle_cat, \"%s\")''' % cat)))
+		print(cat_nonexpert_dists)
 		#hs_views = query_to_views('''where best_score_is_hs == 1 and instr(puzzle_cat, \"%s\")''' % cat)
 		#hs_count = len(hs_views)
 		#cat_hs_dists.append(sum_view_dists_by_user(clusters, hs_views))
 		#cat_nonhs_dists.append(sum_view_dists_by_user(clusters, query_to_views('''where best_score_is_hs == 0 and instr(puzzle_cat, \"%s\") order by random() limit %d''' % (cat,hs_count))))
 
+
+	null_expert = create_null_hypothesis_table(cat_expert_dists)
+	null_nonexpert = create_null_hypothesis_table(cat_nonexpert_dists)
+	chi_sq("expertise_bycat_transposed", cat_expert_dists, cat_nonexpert_dists, transpose=True)
+	chi_sq("catvsnull_expert_transposed", cat_expert_dists, null_expert, transpose=True)
+	chi_sq("catvsnull_nonexpert_transposed", cat_nonexpert_dists, null_nonexpert, transpose=True)
+
+	return
 
 	print("CQA: doing analysis")
 	chi_sq("expertise_main", expert_dist, nonexpert_dist)
@@ -279,6 +291,7 @@ def chi_square_analysis(clusters):
 	chi_sq("expertise_bycat_cont", cat_expert_dists, cat_nonexpert_dists, contingency=True)
 	#chi_sq("hs_main", hs_dist, nonhs_dist)
 	#chi_sq("hs_bycat", cat_hs_dists, cat_nonhs_dists)
+	
 	
 	
 	print("CQA: vs null")
@@ -311,21 +324,27 @@ def create_null_hypothesis_table(table):
 	return new_table
 	
 # no extension
-def chi_sq(filename, table1, table2, contingency=False):
+def chi_sq(filename, table1, table2, contingency=False, transpose=False):
 	import pickle
 	pickle.dump(table1, open(filename + "1.p", 'wb'))
 	pickle.dump(table2, open(filename + "2.p", 'wb'))
+	
+	
+		
+	
 	with open(filename + '.txt', 'w') as f:
 		if contingency:
 			chi_sq, p, dof, expected = scipy.stats.chi2_contingency(table1, correction=True) # Yates correction
-			table2 = expected
 		else:
-			chi_sq, p = stats.chisquare(table1, table2)
+			if transpose:
+				chi_sq, p = stats.chisquare(table1, table2, axis=1)
+			else:
+				chi_sq, p = stats.chisquare(table1, table2)
 		f.write("X^2=" + str(chi_sq))
 		f.write("\np=" + str(p))
 		if contingency:
 			f.write("\ndof=" + str(dof))
-		f.write("\Observed\n")
+		f.write("\nObserved\n")
 		for t in table1:
 			f.write('\n')
 			f.write(str(t))
@@ -1404,14 +1423,44 @@ def add_is_selected_novice_to_options(reselect=False):
 		else:
 			print('''INFO: is_selected_novice already exists in options. Exiting selection...''')
 			return
-
-	# Get list of random non-experts from options
-	c.execute('''select distinct uid from options where is_expert = 0 order by random() limit %s''' % num_experts)
+				
+	uids = []
+	c.execute('''select distinct uid from options  where is_expert = 0 and instr(puzzle_cat, \"Design\")''')
 	results = c.fetchall()
-	non_expert_uids = [result[0] for result in results]
-
-	c.execute('''update options set is_selected_novice = 1 where uid in %s''' % (str(tuple(non_expert_uids))))
-	print("INFO: Selected ", num_experts, " novices randomly from the options table")
+	for result in results:
+		uids.append(result[0])
+	print("design: " + str(len(uids)))
+	c.execute('''select distinct uid from options  where is_expert = 0 and instr(puzzle_cat, \"Prediction\")''')
+	results = c.fetchall()
+	puids = []
+	for result in results:
+		puids.append(result[0])
+	for uid in uids:
+		if uid not in puids:
+			uids.remove(uid)
+	print("design+pred: " + str(len(uids)))
+	c.execute('''select distinct uid from options  where is_expert = 0 and instr(puzzle_cat, \"Electron Density\")''')
+	results = c.fetchall()
+	euids = []
+	for result in results:
+		euids.append(result[0])
+	for uid in uids:
+		if uid not in euids:
+			uids.remove(uid)
+	print("design+pred+ed: " + str(len(uids)))
+	c.execute('''select distinct uid from options where is_expert = 0 and instr(puzzle_cat, \"Hand-Folding\")''')
+	results = c.fetchall()
+	huids = []
+	for result in results:
+		huids.append(result[0])
+	for uid in uids:
+		if uid not in huids:
+			uids.remove(uid)
+	print("design+pred+ed+hf: " + str(len(uids)))
+	uids = uids[:num_experts]
+	
+	c.execute('''update options set is_selected_novice = 1 where uid in %s''' % (str(tuple(uids))))
+	print("INFO: Selected ", len(uids), " novices randomly from the options table")
 	conn.commit()
 
 
