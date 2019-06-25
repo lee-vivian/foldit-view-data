@@ -207,11 +207,42 @@ FULL_OPTIONS_LIST = [
 # place to run tests
 def test(args):
 	print("Beginning Tests...")
-	
+
+	dictionary = query_to_views(where="")
+	print("total user samples analyzed: ", len(dictionary))
+
+	count_dict = {}
+
+	for key, item in dictionary.items():
+
+		uid = key_to_uid(key)
+		if uid not in count_dict:
+			count_dict[uid] = 0
+
+		count_dict[uid] += 1
+
+	samples_per_user = list(count_dict.values())
+	mean_spu = round(calculate_mean(samples_per_user), 2)
+	stddev_spu = round(calculate_stddev(samples_per_user, mean_spu), 2)
+	print("num of users: " + str(len(count_dict)))
+	print("mean of options samples per user: " + str(mean_spu))
+	print("std dev of options samples per user: " + str(stddev_spu))
+
+	# if os.path.isfile('folditx.db'):
+	# 	temp_conn = sqlite3.connect('folditx.db')
+	# 	temp_c = temp_conn.cursor()
+	# 	temp_c.execute('''select count(*) from options;''')
+	# 	results = temp_c.fetchall()
+	# 	total_data_samples_before_filtering = results[0][0]
+	# 	print("total data samples (pre-filter): " + str(total_data_samples_before_filtering))
+
+	return
+
+
 	#sse_plot(weighted=True)	
 	#cluster_plot("", "dendro_all_unique_6.png", weighted=False) # only need to run once, can comment out after
 	# cluster mapping is now saved to clusters.csv
-	
+
 	clusters = {} # view : cluster
 	with open("clusters.csv", 'r') as f:
 		reader = csv.reader(f)
