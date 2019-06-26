@@ -211,30 +211,65 @@ def test(args):
 	dictionary = query_to_views(where="")
 	print("total user samples analyzed: ", len(dictionary))
 
-	count_dict = {}
+	uid_count_dict = {}
+	pid_count_dict = {}
 
 	for key, item in dictionary.items():
 
 		uid = key_to_uid(key)
-		if uid not in count_dict:
-			count_dict[uid] = 0
+		if uid not in uid_count_dict:
+			uid_count_dict[uid] = 0
 
-		count_dict[uid] += 1
+		pid = key_to_pid(key)
+		if pid not in pid_count_dict:
+			pid_count_dict[pid] = 0
 
-	samples_per_user = list(count_dict.values())
+		uid_count_dict[uid] += 1
+		pid_count_dict[pid] += 1
+
+	samples_per_user = list(uid_count_dict.values())
 	mean_spu = round(calculate_mean(samples_per_user), 2)
 	stddev_spu = round(calculate_stddev(samples_per_user, mean_spu), 2)
-	print("num of users: " + str(len(count_dict)))
+	print("num unique users: " + str(len(uid_count_dict)))
+	print("num unique puzzles: " + str(len(pid_count_dict)))
 	print("mean of options samples per user: " + str(mean_spu))
 	print("std dev of options samples per user: " + str(stddev_spu))
 
-	# if os.path.isfile('folditx.db'):
-	# 	temp_conn = sqlite3.connect('folditx.db')
-	# 	temp_c = temp_conn.cursor()
-	# 	temp_c.execute('''select count(*) from options;''')
-	# 	results = temp_c.fetchall()
-	# 	total_data_samples_before_filtering = results[0][0]
-	# 	print("total data samples (pre-filter): " + str(total_data_samples_before_filtering))
+	if os.path.isfile('folditx.db'):
+
+		old_views = {}
+		old_uid_count_dict = {}
+		old_pid_count_dict = {}
+		old_query = '''select r.gid, o.uid, o.pid, o.time from options o join (select gid, uid, pid from rprp_puzzle_ranks) r on o.uid == r.uid and o.pid == r.pid '''
+
+		old_conn = sqlite3.connect('folditx.db')
+		old_c = old_conn.cursor()
+		old_c.execute(old_query)
+		old_results = old_c.fetchall()
+
+		for result in old_results:
+			gid = 0 if result[0] is None else result[0]
+			unique_id = str(gid) + "/" + str(result[1]) + str(result[2]) + str(result[3])
+			if unique_id not in old_views:
+				old_views[unique_id] = {}
+
+		print("total user samples before filtering: ", len(old_views))
+
+		for key, item in old_views.items():
+
+			uid = key_to_uid(key)
+			if uid not in old_uid_count_dict:
+				old_uid_count_dict[uid] = 0
+
+			pid = key_to_pid(key)
+			if pid not in old_pid_count_dict:
+				old_pid_count_dict[pid] = 0
+
+			old_uid_count_dict[uid] += 1
+			old_pid_count_dict[pid] += 1
+
+		print("num unique users before filtering: " + str(len(old_uid_count_dict)))
+		print("num unique puzzles before filtering: " + str(len(old_pid_count_dict)))
 
 	return
 
@@ -556,6 +591,12 @@ def key_to_uid(key):
 	splitter = key.split('/') # remove gid
 	uidplus = splitter[1]
 	return uidplus[:UID_LENGTH]
+
+def key_to_pid(key):
+	splitter = key.split('/') # remove gid
+	uidpidtime = splitter[1]
+	return uidpidtime[UID_LENGTH:(UID_LENGTH + PID_LENGTH)]
+
 	
 def test_group_stats():
 	gids = get_valid_gids()
@@ -1851,7 +1892,6 @@ def query_to_views(where, cat_only=False):
 		if not cat_only:
 			for i in range(num_bin_options):
 				view[BINARY_OPTIONS[i]] = result[4 + i]
-
 
 		for j in range(num_cat_options):
 			cat_option_name = list(CAT_OPTIONS.keys())[j]
