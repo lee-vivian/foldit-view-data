@@ -213,6 +213,22 @@ def test(args):
 
 	uid_count_dict = {}
 	pid_count_dict = {}
+	puzzle_cat_dict = {
+		"Overall": 0,
+		"Prediction": 0,
+		"Design": 0,
+		"CASP10": 0,
+		"CASP ROLL": 0,
+		"Symmetry": 0,
+		"Electron Density": 0,
+		"Predicted Contacts": 0,
+		"Hand-Folding": 0,
+		"CASP11": 0,
+		"Small Molecule Design": 0
+	}
+	unique_pid_check = []
+
+	puzzle_categories = list(puzzle_cat_dict.keys())
 
 	for key, item in dictionary.items():
 
@@ -227,6 +243,13 @@ def test(args):
 		uid_count_dict[uid] += 1
 		pid_count_dict[pid] += 1
 
+		if pid not in unique_pid_check:
+			pcat = item["puzzle_cat"]
+			for p in puzzle_categories:
+				if p in pcat:
+					puzzle_cat_dict[p] += 1
+			unique_pid_check.append(pid)
+
 	samples_per_user = list(uid_count_dict.values())
 	mean_spu = round(calculate_mean(samples_per_user), 2)
 	stddev_spu = round(calculate_stddev(samples_per_user, mean_spu), 2)
@@ -234,6 +257,9 @@ def test(args):
 	print("num unique puzzles: " + str(len(pid_count_dict)))
 	print("mean of options samples per user: " + str(mean_spu))
 	print("std dev of options samples per user: " + str(stddev_spu))
+	print("post-filter puzzle category count:\n")
+	print(puzzle_cat_dict)
+	print("\n")
 
 	if os.path.isfile('folditx.db'):
 
@@ -1866,7 +1892,7 @@ def query_to_views(where, cat_only=False):
 
 	views = {}  # dict of dicts, uniquely identified by uid, pid, and time
 
-	query = '''select r.gid, o.uid, o.pid, o.time, %s, %s from options o
+	query = '''select r.gid, o.uid, o.pid, o.time, o.puzzle_cat, %s, %s from options o
 	join (select gid, best_score_is_hs, uid, pid from rprp_puzzle_ranks) r
 	on o.uid == r.uid and o.pid == r.pid %s''' \
 			% (','.join(opt for opt in BINARY_OPTIONS), ','.join(opt for opt in CAT_OPTIONS), where)
@@ -1889,14 +1915,19 @@ def query_to_views(where, cat_only=False):
 			#print(unique_id)
 		view = views[unique_id]
 
+		# Get puzzle cat
+		view["puzzle_cat"] = result[4]
+
+		# Get binary options
 		if not cat_only:
 			for i in range(num_bin_options):
-				view[BINARY_OPTIONS[i]] = result[4 + i]
+				view[BINARY_OPTIONS[i]] = result[5 + i]
 
+		# Get categorical options
 		for j in range(num_cat_options):
 			cat_option_name = list(CAT_OPTIONS.keys())[j]
 			cat_option_values = CAT_OPTIONS[cat_option_name]
-			result_value = result[4 + num_bin_options + j]
+			result_value = result[5 + num_bin_options + j]
 			for option in cat_option_values:
 				view[option] = 1 if option == result_value else 0
 
